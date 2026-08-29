@@ -1,14 +1,21 @@
+import crypto from "crypto";
+
 export default async function handler(req, res) {
 
     // ==========================================
     // CORS
     // ==========================================
 
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader(
+        "Access-Control-Allow-Origin",
+        "*"
+    );
+
     res.setHeader(
         "Access-Control-Allow-Methods",
         "POST, OPTIONS"
     );
+
     res.setHeader(
         "Access-Control-Allow-Headers",
         "Content-Type"
@@ -26,12 +33,143 @@ export default async function handler(req, res) {
     }
 
     // ==========================================
+    // VERIFY ADMIN SESSION
+    // ==========================================
+
+    const cookies =
+        req.headers.cookie || "";
+
+    const match =
+        cookies.match(
+            /(?:^|;\s*)admin_session=([^;]+)/
+        );
+
+    if (!match) {
+
+        return res.status(401).json({
+            success: false,
+            error: "Admin login required"
+        });
+    }
+
+    const sessionToken =
+        match[1];
+
+    try {
+
+        const decoded =
+            Buffer
+                .from(
+                    sessionToken,
+                    "base64url"
+                )
+                .toString("utf8");
+
+        const parts =
+            decoded.split(":");
+
+        if (parts.length !== 3) {
+            throw new Error(
+                "Invalid session"
+            );
+        }
+
+        const type =
+            parts[0];
+
+        const expiresAt =
+            parts[1];
+
+        const signature =
+            parts[2];
+
+        if (type !== "admin") {
+            throw new Error(
+                "Invalid session type"
+            );
+        }
+
+        if (
+            !Number.isFinite(
+                Number(expiresAt)
+            )
+        ) {
+            throw new Error(
+                "Invalid session expiry"
+            );
+        }
+
+        if (
+            Date.now() >
+            Number(expiresAt)
+        ) {
+            throw new Error(
+                "Session expired"
+            );
+        }
+
+        const sessionSecret =
+            process.env.ADMIN_SESSION_SECRET;
+
+        if (!sessionSecret) {
+
+            return res.status(500).json({
+                success: false,
+                error:
+                    "ADMIN_SESSION_SECRET is not configured"
+            });
+        }
+
+        const payload =
+            `admin:${expiresAt}`;
+
+        const expectedSignature =
+            crypto
+                .createHmac(
+                    "sha256",
+                    sessionSecret
+                )
+                .update(payload)
+                .digest("hex");
+
+        if (
+            signature.length !==
+            expectedSignature.length
+        ) {
+            throw new Error(
+                "Invalid session signature"
+            );
+        }
+
+        if (
+            !crypto.timingSafeEqual(
+                Buffer.from(signature),
+                Buffer.from(expectedSignature)
+            )
+        ) {
+            throw new Error(
+                "Invalid session signature"
+            );
+        }
+
+    } catch (error) {
+
+        return res.status(401).json({
+            success: false,
+            error:
+                "Invalid or expired admin session"
+        });
+    }
+
+    // ==========================================
     // GITHUB TOKEN
     // ==========================================
 
-    const token = process.env.GITHUB_TOKEN;
+    const token =
+        process.env.GITHUB_TOKEN;
 
     if (!token) {
+
         return res.status(500).json({
             success: false,
             error:
@@ -43,22 +181,17 @@ export default async function handler(req, res) {
     // REQUEST DATA
     // ==========================================
 
-    let body;
+    const body =
+        req.body || {};
 
-    try {
-        body = req.body || {};
-    } catch (error) {
-        return res.status(400).json({
-            success: false,
-            error: "Invalid request body"
-        });
-    }
+    const file =
+        body.file;
 
-    const file = body.file;
-    const newData = body.data;
+    const newData =
+        body.data;
 
     // ==========================================
-    // ALLOWED BACKEND FILES
+    // ALLOWED REPOSITORIES
     // ==========================================
 
     const repositories = {
@@ -80,6 +213,7 @@ export default async function handler(req, res) {
             repo: "wns",
             path: "wns.json"
         }
+
     };
 
     // ==========================================
@@ -90,7 +224,8 @@ export default async function handler(req, res) {
 
         return res.status(400).json({
             success: false,
-            error: "Invalid backend file"
+            error:
+                "Invalid backend file"
         });
     }
 
@@ -102,7 +237,8 @@ export default async function handler(req, res) {
 
         return res.status(400).json({
             success: false,
-            error: "Invalid JSON data"
+            error:
+                "Invalid JSON data"
         });
     }
 
@@ -116,29 +252,32 @@ export default async function handler(req, res) {
 
     try {
 
-        // ==========================================
-        // GET CURRENT FILE + CURRENT SHA
-        // ==========================================
+        // ======================================
+        // GET CURRENT SHA
+        // ======================================
 
         const currentResponse =
-            await fetch(githubUrl, {
+            await fetch(
+                githubUrl,
+                {
+                    method: "GET",
 
-                method: "GET",
+                    headers: {
 
-                headers: {
-                    "Authorization":
-                        `Bearer ${token}`,
+                        "Authorization":
+                            `Bearer ${token}`,
 
-                    "Accept":
-                        "application/vnd.github+json",
+                        "Accept":
+                            "application/vnd.github+json",
 
-                    "X-GitHub-Api-Version":
-                        "2022-11-28",
+                        "X-GitHub-Api-Version":
+                            "2022-11-28",
 
-                    "User-Agent":
-                        "Extension-Admin-Panel"
+                        "User-Agent":
+                            "Extension-Admin-Panel"
+                    }
                 }
-            });
+            );
 
         const current =
             await currentResponse.json();
@@ -169,9 +308,9 @@ export default async function handler(req, res) {
             });
         }
 
-        // ==========================================
-        // CONVERT JSON → BASE64
-        // ==========================================
+        // ======================================
+        // JSON → BASE64
+        // ======================================
 
         const jsonText =
             JSON.stringify(
@@ -182,48 +321,55 @@ export default async function handler(req, res) {
 
         const encoded =
             Buffer
-                .from(jsonText, "utf8")
+                .from(
+                    jsonText,
+                    "utf8"
+                )
                 .toString("base64");
 
-        // ==========================================
+        // ======================================
         // UPDATE GITHUB
-        // ==========================================
+        // ======================================
 
         const updateResponse =
-            await fetch(githubUrl, {
+            await fetch(
+                githubUrl,
+                {
 
-                method: "PUT",
+                    method: "PUT",
 
-                headers: {
+                    headers: {
 
-                    "Authorization":
-                        `Bearer ${token}`,
+                        "Authorization":
+                            `Bearer ${token}`,
 
-                    "Accept":
-                        "application/vnd.github+json",
+                        "Accept":
+                            "application/vnd.github+json",
 
-                    "Content-Type":
-                        "application/json",
+                        "Content-Type":
+                            "application/json",
 
-                    "X-GitHub-Api-Version":
-                        "2022-11-28",
+                        "X-GitHub-Api-Version":
+                            "2022-11-28",
 
-                    "User-Agent":
-                        "Extension-Admin-Panel"
-                },
+                        "User-Agent":
+                            "Extension-Admin-Panel"
+                    },
 
-                body: JSON.stringify({
+                    body: JSON.stringify({
 
-                    message:
-                        `Admin Panel: Update ${config.path}`,
+                        message:
+                            `Admin Panel: Update ${config.path}`,
 
-                    content:
-                        encoded,
+                        content:
+                            encoded,
 
-                    sha:
-                        current.sha
-                })
-            });
+                        sha:
+                            current.sha
+
+                    })
+                }
+            );
 
         const result =
             await updateResponse.json();
@@ -243,9 +389,9 @@ export default async function handler(req, res) {
             });
         }
 
-        // ==========================================
+        // ======================================
         // SUCCESS
-        // ==========================================
+        // ======================================
 
         return res.status(200).json({
 
@@ -262,6 +408,7 @@ export default async function handler(req, res) {
 
             commit:
                 result.commit?.sha || null
+
         });
 
     } catch (error) {
@@ -278,6 +425,7 @@ export default async function handler(req, res) {
             error:
                 error.message ||
                 "Server error"
+
         });
     }
 }
