@@ -1,1044 +1,833 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
-
-<meta name="theme-color"
-      content="#080b10">
-
-<title>Extension Control Panel</title>
-
-<link rel="stylesheet"
-      href="style.css">
-
-<style>
-    /* ================= LOGIN ================= */
-
-    #adminLogin {
-        position: fixed;
-        inset: 0;
-        z-index: 999999;
-        background:
-            radial-gradient(
-                circle at top,
-                #172033 0%,
-                #080b10 45%,
-                #05070a 100%
-            );
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-    }
-
-    #adminLogin.hidden {
-        display: none;
-    }
-
-    .login-box {
-        width: 100%;
-        max-width: 390px;
-        box-sizing: border-box;
-        padding: 30px;
-        border-radius: 24px;
-        background: rgba(17, 19, 24, .96);
-        border: 1px solid #2b303a;
-        box-shadow: 0 25px 90px rgba(0,0,0,.65);
-        color: #fff;
-    }
-
-    .login-icon {
-        width: 64px;
-        height: 64px;
-        margin: 0 auto 18px;
-        border-radius: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #151a23;
-        border: 1px solid #303746;
-        font-size: 30px;
-    }
-
-    .login-box h1 {
-        margin: 0;
-        text-align: center;
-        font-size: 24px;
-    }
-
-    .login-box p {
-        margin: 8px 0 24px;
-        text-align: center;
-        color: #8b93a1;
-        font-size: 13px;
-    }
-
-    .login-label {
-        display: block;
-        margin-bottom: 8px;
-        color: #cbd5e1;
-        font-size: 13px;
-        font-weight: 700;
-    }
-
-    .login-input-wrap {
-        position: relative;
-    }
-
-    #adminPassword {
-        width: 100%;
-        height: 50px;
-        box-sizing: border-box;
-        padding: 0 48px 0 14px;
-        border-radius: 12px;
-        border: 1px solid #343b49;
-        background: #090b0f;
-        color: #fff;
-        outline: none;
-        font-size: 14px;
-    }
-
-    #adminPassword:focus {
-        border-color: #16a34a;
-    }
-
-    #loginEye {
-        position: absolute;
-        right: 5px;
-        top: 5px;
-        width: 40px;
-        height: 40px;
-        border: 0;
-        background: transparent;
-        color: #9ca3af;
-        cursor: pointer;
-        font-size: 17px;
-    }
-
-    #loginBtn {
-        width: 100%;
-        height: 50px;
-        margin-top: 16px;
-        border: 0;
-        border-radius: 12px;
-        background: #16a34a;
-        color: #fff;
-        font-weight: 900;
-        cursor: pointer;
-    }
-
-    #loginBtn:disabled {
-        opacity: .6;
-        cursor: not-allowed;
-    }
-
-    #loginStatus {
-        min-height: 20px;
-        margin-top: 12px;
-        text-align: center;
-        font-size: 12px;
-    }
-
-    .login-footer {
-        margin-top: 20px;
-        text-align: center;
-        color: #5f6875;
-        font-size: 10px;
-    }
-
-    /* Hide dashboard until login */
-    body.login-locked .app {
-        display: none;
-    }
-</style>
-
-</head><body class="login-locked"><!-- ================= ADMIN LOGIN ================= --><div id="adminLogin"><div class="login-box">
-
-    <div class="login-icon">
-        🔐
-    </div>
-
-    <h1>
-        Admin Login
-    </h1>
-
-    <p>
-        Extension Control Panel
-    </p>
-
-    <label class="login-label">
-        Admin Password
-    </label>
-
-    <div class="login-input-wrap">
-
-        <input
-            id="adminPassword"
-            type="password"
-            placeholder="Enter admin password"
-            autocomplete="current-password"
-            spellcheck="false">
-
-        <button
-            id="loginEye"
-            type="button">
-            👁
-        </button>
-
-    </div>
-
-    <div id="loginStatus"></div>
-
-    <button
-        id="loginBtn"
-        type="button">
-        LOGIN
-    </button>
-
-    <div class="login-footer">
-        Secure Admin Control • QuotexCoder
-    </div>
-
-</div>
-
-</div><!-- ================= MAIN APP ================= --><div class="app"><!-- ================= HEADER ================= -->
-
-<header class="topbar">
-
-    <div class="brand">
-
-        <div class="brand-icon">
-            ⚡
-        </div>
-
-        <div>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#080b10">
+    <title>Extension Control Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ================= LOGIN SCREEN ================= */
+        #adminLogin {
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background:
+                radial-gradient(
+                    circle at 50% -10%,
+                    rgba(34,197,94,.18),
+                    transparent 35%
+                ),
+                radial-gradient(
+                    circle at 100% 100%,
+                    rgba(56,189,248,.07),
+                    transparent 35%
+                ),
+                #06080c;
+        }
+        #adminLogin.hidden {
+            display: none;
+        }
+        .login-box {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            padding: 34px 30px 28px;
+            border-radius: 24px;
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(24,30,40,.98),
+                    rgba(12,16,22,.98)
+                );
+            border: 1px solid rgba(255,255,255,.09);
+            box-shadow:
+                0 35px 100px rgba(0,0,0,.65),
+                inset 0 1px 0 rgba(255,255,255,.04);
+            color: #fff;
+        }
+        .login-box::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 15%;
+            right: 15%;
+            height: 1px;
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(34,197,94,.7),
+                    transparent
+                );
+        }
+        .login-icon {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 20px;
+            display: grid;
+            place-items: center;
+            border-radius: 21px;
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(34,197,94,.18),
+                    rgba(34,197,94,.05)
+                );
+            border: 1px solid rgba(34,197,94,.25);
+            box-shadow:
+                0 12px 35px rgba(34,197,94,.08);
+            font-size: 31px;
+        }
+        .login-box h1 {
+            margin: 0;
+            text-align: center;
+            font-size: 25px;
+            font-weight: 900;
+            letter-spacing: -.5px;
+        }
+        .login-box p {
+            margin: 8px 0 26px;
+            text-align: center;
+            color: #8993a3;
+            font-size: 13px;
+        }
+        .login-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            font-size: 12px;
+            font-weight: 800;
+        }
+        .login-input-wrap {
+            position: relative;
+        }
+        #adminPassword {
+            width: 100%;
+            height: 52px;
+            padding: 0 52px 0 15px;
+            border-radius: 13px;
+            border: 1px solid #303846;
+            background: #080b10;
+            color: #fff;
+            outline: none;
+            font-size: 14px;
+            transition: .2s;
+        }
+        #adminPassword::placeholder {
+            color: #596372;
+        }
+        #adminPassword:focus {
+            border-color: #22c55e;
+            box-shadow:
+                0 0 0 3px rgba(34,197,94,.10);
+        }
+        #loginEye {
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            width: 42px;
+            height: 42px;
+            border: 0;
+            border-radius: 10px;
+            background: transparent;
+            color: #8993a3;
+            cursor: pointer;
+            font-size: 16px;
+            transition: .2s;
+        }
+        #loginEye:hover {
+            background: #181e27;
+            color: #fff;
+        }
+        #loginBtn {
+            width: 100%;
+            height: 52px;
+            margin-top: 15px;
+            border: 0;
+            border-radius: 13px;
+            background:
+                linear-gradient(
+                    135deg,
+                    #16a34a,
+                    #22c55e
+                );
+            color: white;
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: .3px;
+            cursor: pointer;
+            box-shadow:
+                0 10px 25px rgba(34,197,94,.18);
+            transition: .2s;
+        }
+        #loginBtn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow:
+                0 14px 30px rgba(34,197,94,.25);
+        }
+        #loginBtn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        #loginBtn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+        #loginStatus {
+            min-height: 18px;
+            margin-top: 12px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .login-footer {
+            margin-top: 22px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,.06);
+            text-align: center;
+            color: #555f6d;
+            font-size: 10px;
+        }
+        body.login-locked .app {
+            display: none;
+        }
+        /* ================= SMALL SCREEN LOGIN ================= */
+        @media (max-width: 420px) {
+            #adminLogin {
+                padding: 15px;
+            }
+            .login-box {
+                padding: 28px 21px 23px;
+                border-radius: 21px;
+            }
+            .login-icon {
+                width: 62px;
+                height: 62px;
+                font-size: 27px;
+            }
+            .login-box h1 {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body class="login-locked">
+    <!-- =========================================================
+         ADMIN LOGIN
+    ========================================================== -->
+    <div id="adminLogin">
+        <div class="login-box">
+            <div class="login-icon">
+                🔐
+            </div>
             <h1>
-                Extension Control
+                Admin Login
             </h1>
-
             <p>
-                Secure GitHub Backend Manager
+                Secure Extension Control Panel
             </p>
-
-        </div>
-
-    </div>
-
-    <div style="display:flex;gap:8px;align-items:center;">
-
-        <button
-            id="logoutBtn"
-            class="btn secondary"
-            type="button">
-
-            🔒 Logout
-
-        </button>
-
-        <button
-            id="refreshBtn"
-            class="btn secondary"
-            type="button">
-
-            ↻ Refresh
-
-        </button>
-
-    </div>
-
-</header>
-
-
-<!-- ================= MESSAGE ================= -->
-
-<div
-    id="message"
-    class="message">
-</div>
-
-
-<!-- ================= DASHBOARD ================= -->
-
-<section class="stats">
-
-    <div class="stat-card">
-
-        <span class="stat-icon">
-            👥
-        </span>
-
-        <div>
-
-            <small>
-                Total Users
-            </small>
-
-            <strong id="totalUsers">
-                0
-            </strong>
-
-        </div>
-
-    </div>
-
-
-    <div class="stat-card">
-
-        <span class="stat-icon">
-            🟢
-        </span>
-
-        <div>
-
-            <small>
-                Active Users
-            </small>
-
-            <strong id="activeUsers">
-                0
-            </strong>
-
-        </div>
-
-    </div>
-
-
-    <div class="stat-card">
-
-        <span class="stat-icon">
-            🚫
-        </span>
-
-        <div>
-
-            <small>
-                Blocked Users
-            </small>
-
-            <strong id="blockedUsers">
-                0
-            </strong>
-
-        </div>
-
-    </div>
-
-
-    <div class="stat-card">
-
-        <span class="stat-icon">
-            ☁️
-        </span>
-
-        <div>
-
-            <small>
-                Backend
-            </small>
-
-            <strong id="backendStatus">
-                Checking
-            </strong>
-
-        </div>
-
-    </div>
-
-</section>
-
-
-<!-- ================= BACKEND TABS ================= -->
-
-<nav class="tabs">
-
-    <button
-        class="tab active"
-        data-file="withdrawal">
-
-        Withdrawal
-
-    </button>
-
-    <button
-        class="tab"
-        data-file="yns">
-
-        YNS
-
-    </button>
-
-    <button
-        class="tab"
-        data-file="wns">
-
-        WNS
-
-    </button>
-
-</nav>
-
-
-<!-- ================= SETTINGS ================= -->
-
-<section
-    id="settingsCard"
-    class="card">
-
-    <div class="card-header">
-
-        <div>
-
-            <h2>
-                Backend Settings
-            </h2>
-
-            <p>
-                Control extension access
-            </p>
-
-        </div>
-
-        <span
-            id="currentFile"
-            class="file-badge">
-
-            Withdrawal.json
-
-        </span>
-
-        <span
-            id="fileTitle"
-            style="display:none;">
-        </span>
-
-    </div>
-
-
-    <div class="settings">
-
-        <div class="setting-row">
-
-            <div>
-
-                <strong>
-                    Extension Active
-                </strong>
-
-                <small>
-                    Allow the extension backend
-                    to operate.
-                </small>
-
-            </div>
-
-            <label class="switch">
-
-                <input
-                    type="checkbox"
-                    id="activeToggle">
-
-                <span></span>
-
+            <label
+                class="login-label"
+                for="adminPassword">
+                Admin Password
             </label>
-
-        </div>
-
-
-        <div class="setting-row">
-
-            <div>
-
-                <strong>
-                    Password Required
-                </strong>
-
-                <small>
-                    Require password
-                    authentication.
-                </small>
-
-            </div>
-
-            <label class="switch">
-
+            <div class="login-input-wrap">
                 <input
-                    type="checkbox"
-                    id="passwordToggle">
-
-                <span></span>
-
+                    id="adminPassword"
+                    type="password"
+                    placeholder="Enter your admin password"
+                    autocomplete="current-password"
+                    spellcheck="false">
+                <button
+                    id="loginEye"
+                    type="button"
+                    aria-label="Show password">
+                    👁
+                </button>
+            </div>
+            <div id="loginStatus"></div>
+            <button
+                id="loginBtn"
+                type="button">
+                LOGIN TO DASHBOARD
+            </button>
+            <div class="login-footer">
+                🔒 Secure Admin Access • QuotexCoder
+            </div>
+        </div>
+    </div>
+    <!-- =========================================================
+         MAIN APPLICATION
+    ========================================================== -->
+    <div class="app">
+        <!-- ================= HEADER ================= -->
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-icon">
+                    ⚡
+                </div>
+                <div>
+                    <h1>
+                        Extension Control
+                    </h1>
+                    <p>
+                        Manage your backend & extension access
+                    </p>
+                </div>
+            </div>
+            <div
+                style="
+                    display:flex;
+                    gap:8px;
+                    align-items:center;
+                ">
+                <button
+                    id="refreshBtn"
+                    class="btn secondary"
+                    type="button">
+                    ↻ Refresh
+                </button>
+                <button
+                    id="logoutBtn"
+                    class="btn secondary"
+                    type="button">
+                    🔒 Logout
+                </button>
+            </div>
+        </header>
+        <!-- ================= MESSAGE ================= -->
+        <div
+            id="message"
+            class="message">
+        </div>
+        <!-- ================= STATS ================= -->
+        <section class="stats">
+            <div class="stat-card">
+                <span class="stat-icon">
+                    👥
+                </span>
+                <div>
+                    <small>
+                        Total Users
+                    </small>
+                    <strong id="totalUsers">
+                        0
+                    </strong>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">
+                    🟢
+                </span>
+                <div>
+                    <small>
+                        Active Users
+                    </small>
+                    <strong id="activeUsers">
+                        0
+                    </strong>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">
+                    🚫
+                </span>
+                <div>
+                    <small>
+                        Blocked Users
+                    </small>
+                    <strong id="blockedUsers">
+                        0
+                    </strong>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">
+                    ☁️
+                </span>
+                <div>
+                    <small>
+                        Backend
+                    </small>
+                    <strong id="backendStatus">
+                        Checking
+                    </strong>
+                </div>
+            </div>
+        </section>
+        <!-- ================= BACKEND TABS ================= -->
+        <nav class="tabs">
+            <button
+                class="tab active"
+                data-file="withdrawal"
+                type="button">
+                💳 Withdrawal
+            </button>
+            <button
+                class="tab"
+                data-file="yns"
+                type="button">
+                🟢 YNS
+            </button>
+            <button
+                class="tab"
+                data-file="wns"
+                type="button">
+                🔵 WNS
+            </button>
+        </nav>
+        <!-- ================= SETTINGS ================= -->
+        <section
+            id="settingsCard"
+            class="card">
+            <div class="card-header">
+                <div>
+                    <h2>
+                        Backend Settings
+                    </h2>
+                    <p>
+                        Control extension access and security
+                    </p>
+                </div>
+                <span
+                    id="currentFile"
+                    class="file-badge">
+                    Withdrawal.json
+                </span>
+                <span
+                    id="fileTitle"
+                    style="display:none;">
+                </span>
+            </div>
+            <div class="settings">
+                <div class="setting-row">
+                    <div>
+                        <strong>
+                            Extension Active
+                        </strong>
+                        <small>
+                            Allow the extension backend to operate.
+                        </small>
+                    </div>
+                    <label class="switch">
+                        <input
+                            type="checkbox"
+                            id="activeToggle">
+                        <span></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div>
+                        <strong>
+                            Password Required
+                        </strong>
+                        <small>
+                            Require password authentication.
+                        </small>
+                    </div>
+                    <label class="switch">
+                        <input
+                            type="checkbox"
+                            id="passwordToggle">
+                        <span></span>
+                    </label>
+                </div>
+            </div>
+        </section>
+        <!-- ================= USERS ================= -->
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>
+                        User Management
+                    </h2>
+                    <p>
+                        Add, edit, block or remove extension UIDs
+                    </p>
+                </div>
+                <button
+                    id="addUserBtn"
+                    class="btn primary"
+                    type="button">
+                    ＋ Add UID
+                </button>
+            </div>
+            <!-- SEARCH -->
+            <div class="search-box">
+                <span>
+                    🔍
+                </span>
+                <input
+                    id="searchInput"
+                    type="search"
+                    placeholder="Search UID or user name..."
+                    autocomplete="off">
+            </div>
+            <!-- TABLE -->
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>
+                                UID
+                            </th>
+                            <th>
+                                Name
+                            </th>
+                            <th>
+                                Password
+                            </th>
+                            <th>
+                                Status
+                            </th>
+                            <th>
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTable">
+                    </tbody>
+                </table>
+            </div>
+            <!-- EMPTY -->
+            <div
+                id="emptyUsers"
+                class="empty hidden">
+                <div>
+                    👤
+                </div>
+                <strong>
+                    No users found
+                </strong>
+                <span>
+                    Add a UID to get started.
+                </span>
+            </div>
+        </section>
+        <!-- ================= BLOCKED USERS ================= -->
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>
+                        Blocked UIDs
+                    </h2>
+                    <p>
+                        Users currently blocked from access
+                    </p>
+                </div>
+                <span
+                    id="blockedCount"
+                    class="count-badge">
+                    0
+                </span>
+            </div>
+            <div
+                id="blockedList"
+                class="blocked-list">
+            </div>
+        </section>
+        <!-- ================= SAVE BAR ================= -->
+        <div class="save-bar">
+            <div>
+                <strong>
+                    GitHub Changes
+                </strong>
+                <span>
+                    Local changes are not published until you save.
+                </span>
+            </div>
+            <button
+                id="saveBtn"
+                class="btn primary save-btn"
+                type="button">
+                💾 Save to GitHub
+            </button>
+        </div>
+        <!-- ================= FOOTER ================= -->
+        <footer>
+            <span>
+                Extension Control Panel
+            </span>
+            <span>
+                •
+            </span>
+            <span>
+                Secure GitHub Backend
+            </span>
+            <span>
+                •
+            </span>
+            <span>
+                QuotexCoder
+            </span>
+        </footer>
+    </div>
+    <!-- =========================================================
+         ADD / EDIT USER MODAL
+    ========================================================== -->
+    <div
+        id="userModal"
+        class="modal hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modalTitle">
+                        Add UID
+                    </h2>
+                    <p>
+                        Enter user information below
+                    </p>
+                </div>
+                <button
+                    id="closeModalBtn"
+                    class="close-btn"
+                    type="button"
+                    aria-label="Close">
+                    ×
+                </button>
+            </div>
+            <label for="uidInput">
+                UID
             </label>
-
+            <input
+                id="uidInput"
+                type="text"
+                placeholder="uid_123456"
+                autocomplete="off">
+            <label for="nameInput">
+                User Name
+            </label>
+            <input
+                id="nameInput"
+                type="text"
+                placeholder="Enter user name"
+                autocomplete="off">
+            <label for="userPasswordInput">
+                Password
+            </label>
+            <div class="password-input">
+                <input
+                    id="userPasswordInput"
+                    type="password"
+                    placeholder="Enter password"
+                    autocomplete="off">
+                <button
+                    id="showPasswordBtn"
+                    type="button"
+                    aria-label="Show password">
+                    👁
+                </button>
+            </div>
+            <div class="modal-actions">
+                <button
+                    id="cancelBtn"
+                    class="btn secondary"
+                    type="button">
+                    Cancel
+                </button>
+                <button
+                    id="confirmUserBtn"
+                    class="btn primary"
+                    type="button">
+                    Save User
+                </button>
+            </div>
         </div>
-
     </div>
-
-</section>
-
-
-<!-- ================= USERS ================= -->
-
-<section class="card">
-
-    <div class="card-header">
-
-        <div>
-
-            <h2>
-                User Management
-            </h2>
-
-            <p>
-                Manage extension UIDs
-            </p>
-
-        </div>
-
-
-        <button
-            id="addUserBtn"
-            class="btn primary"
-            type="button">
-
-            ＋ Add UID
-
-        </button>
-
-    </div>
-
-
-    <!-- SEARCH -->
-
-    <div class="search-box">
-
-        <span>
-            🔍
-        </span>
-
-        <input
-            id="searchInput"
-            type="search"
-            placeholder="Search UID or user name..."
-            autocomplete="off">
-
-    </div>
-
-
-    <!-- TABLE -->
-
-    <div class="table-wrap">
-
-        <table>
-
-            <thead>
-
-                <tr>
-
-                    <th>
-                        UID
-                    </th>
-
-                    <th>
-                        Name
-                    </th>
-
-                    <th>
-                        Password
-                    </th>
-
-                    <th>
-                        Status
-                    </th>
-
-                    <th>
-                        Actions
-                    </th>
-
-                </tr>
-
-            </thead>
-
-
-            <tbody
-                id="usersTable">
-            </tbody>
-
-        </table>
-
-    </div>
-
-
-    <!-- EMPTY -->
-
+    <!-- =========================================================
+         CONFIRM MODAL
+    ========================================================== -->
     <div
-        id="emptyUsers"
-        class="empty hidden">
-
-        <div>
-            👤
-        </div>
-
-        <strong>
-            No users found
-        </strong>
-
-        <span>
-            Add a UID to get started.
-        </span>
-
-    </div>
-
-</section>
-
-
-<!-- ================= BLOCKED ================= -->
-
-<section class="card">
-
-    <div class="card-header">
-
-        <div>
-
-            <h2>
-                Blocked UIDs
+        id="confirmModal"
+        class="modal hidden">
+        <div class="modal-box small">
+            <div class="confirm-icon">
+                ⚠️
+            </div>
+            <h2 id="confirmTitle">
+                Confirm Action
             </h2>
-
-            <p>
-                Users currently blocked
+            <p id="confirmText">
+                Are you sure?
             </p>
-
+            <div class="modal-actions">
+                <button
+                    id="confirmCancel"
+                    class="btn secondary"
+                    type="button">
+                    Cancel
+                </button>
+                <button
+                    id="confirmOk"
+                    class="btn danger"
+                    type="button">
+                    Confirm
+                </button>
+            </div>
         </div>
-
-        <span
-            id="blockedCount"
-            class="count-badge">
-
-            0
-
-        </span>
-
     </div>
-
-
-    <div
-        id="blockedList"
-        class="blocked-list">
-    </div>
-
-</section>
-
-
-<!-- ================= SAVE BAR ================= -->
-
-<div class="save-bar">
-
-    <div>
-
-        <strong>
-            GitHub Changes
-        </strong>
-
-        <span>
-            Changes are saved only after
-            you press Save to GitHub.
-        </span>
-
-    </div>
-
-
-    <button
-        id="saveBtn"
-        class="btn primary save-btn"
-        type="button">
-
-        💾 Save to GitHub
-
-    </button>
-
-</div>
-
-
-<!-- ================= FOOTER ================= -->
-
-<footer>
-
-    <span>
-        Extension Control Panel
-    </span>
-
-    <span>
-        •
-    </span>
-
-    <span>
-        GitHub Backend
-    </span>
-
-</footer>
-
-</div><!-- ================= USER MODAL ================= --><div
-    id="userModal"
-    class="modal hidden"><div class="modal-box">
-
-    <div class="modal-header">
-
-        <div>
-
-            <h2 id="modalTitle">
-                Add UID
-            </h2>
-
-            <p>
-                Enter user information
-            </p>
-
-        </div>
-
-        <button
-            id="closeModalBtn"
-            class="close-btn"
-            type="button">
-
-            ×
-
-        </button>
-
-    </div>
-
-
-    <label>
-        UID
-    </label>
-
-    <input
-        id="uidInput"
-        type="text"
-        placeholder="uid_123456"
-        autocomplete="off">
-
-
-    <label>
-        User Name
-    </label>
-
-    <input
-        id="nameInput"
-        type="text"
-        placeholder="User Name"
-        autocomplete="off">
-
-
-    <label>
-        Password
-    </label>
-
-    <div class="password-input">
-
-        <input
-            id="userPasswordInput"
-            type="password"
-            placeholder="Enter password"
-            autocomplete="off">
-
-        <button
-            id="showPasswordBtn"
-            type="button">
-
-            👁
-
-        </button>
-
-    </div>
-
-
-    <div class="modal-actions">
-
-        <button
-            id="cancelBtn"
-            class="btn secondary"
-            type="button">
-
-            Cancel
-
-        </button>
-
-        <button
-            id="confirmUserBtn"
-            class="btn primary"
-            type="button">
-
-            Save User
-
-        </button>
-
-    </div>
-
-</div>
-
-</div><!-- ================= CONFIRM MODAL ================= --><div
-    id="confirmModal"
-    class="modal hidden"><div class="modal-box small">
-
-    <div class="confirm-icon">
-        ⚠️
-    </div>
-
-    <h2 id="confirmTitle">
-        Confirm Action
-    </h2>
-
-    <p id="confirmText">
-        Are you sure?
-    </p>
-
-    <div class="modal-actions">
-
-        <button
-            id="confirmCancel"
-            class="btn secondary"
-            type="button">
-
-            Cancel
-
-        </button>
-
-        <button
-            id="confirmOk"
-            class="btn danger"
-            type="button">
-
-            Confirm
-
-        </button>
-
-    </div>
-
-</div>
-
-</div><!-- ================= LOGIN SCRIPT ================= --><script>
-(function () {
-
-    "use strict";
-
-    const loginBox =
-        document.getElementById("adminLogin");
-
-    const passwordInput =
-        document.getElementById("adminPassword");
-
-    const loginBtn =
-        document.getElementById("loginBtn");
-
-    const loginStatus =
-        document.getElementById("loginStatus");
-
-    const loginEye =
-        document.getElementById("loginEye");
-
-    const logoutBtn =
-        document.getElementById("logoutBtn");
-
-
-    function showStatus(text, type) {
-
-        loginStatus.textContent = text;
-
-        if (type === "error") {
-            loginStatus.style.color = "#f87171";
-        } else if (type === "success") {
-            loginStatus.style.color = "#4ade80";
-        } else {
-            loginStatus.style.color = "#9ca3af";
-        }
-    }
-
-
-    function unlockDashboard() {
-
-        loginBox.classList.add("hidden");
-
-        document.body.classList.remove(
-            "login-locked"
-        );
-    }
-
-
-    function lockDashboard() {
-
-        loginBox.classList.remove("hidden");
-
-        document.body.classList.add(
-            "login-locked"
-        );
-
-        passwordInput.value = "";
-
-        showStatus("", "normal");
-    }
-
-
-    loginEye.onclick = function () {
-
-        if (
-            passwordInput.type === "password"
-        ) {
-
-            passwordInput.type = "text";
-            loginEye.textContent = "🙈";
-
-        } else {
-
-            passwordInput.type = "password";
-            loginEye.textContent = "👁";
-        }
-
-        passwordInput.focus();
-    };
-
-
-    async function login() {
-
-        const password =
-            passwordInput.value.trim();
-
-        if (!password) {
-
-            showStatus(
-                "❌ Enter admin password",
-                "error"
-            );
-
-            passwordInput.focus();
-
-            return;
-        }
-
-        loginBtn.disabled = true;
-
-        loginBtn.textContent =
-            "VERIFYING...";
-
-        showStatus(
-            "Checking admin access...",
-            "normal"
-        );
-
-        try {
-
-            const response =
-                await fetch(
-                    "/api/admin-login",
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        body: JSON.stringify({
-                            password: password
-                        })
-                    }
+    <!-- =========================================================
+         LOGIN SCRIPT
+    ========================================================== -->
+    <script>
+        (function () {
+            "use strict";
+            const loginBox =
+                document.getElementById("adminLogin");
+            const passwordInput =
+                document.getElementById("adminPassword");
+            const loginBtn =
+                document.getElementById("loginBtn");
+            const loginStatus =
+                document.getElementById("loginStatus");
+            const loginEye =
+                document.getElementById("loginEye");
+            const logoutBtn =
+                document.getElementById("logoutBtn");
+            function showStatus(text, type) {
+                loginStatus.textContent = text;
+                if (type === "error") {
+                    loginStatus.style.color =
+                        "#f87171";
+                } else if (type === "success") {
+                    loginStatus.style.color =
+                        "#4ade80";
+                } else {
+                    loginStatus.style.color =
+                        "#9ca3af";
+                }
+            }
+            function unlockDashboard() {
+                loginBox.classList.add("hidden");
+                document.body.classList.remove(
+                    "login-locked"
                 );
-
-            const data =
-                await response.json();
-
-            if (
-                !response.ok ||
-                !data.success
-            ) {
-
-                showStatus(
-                    "❌ " +
-                    (
-                        data.error ||
-                        "Invalid password"
-                    ),
-                    "error"
+            }
+            function lockDashboard() {
+                loginBox.classList.remove("hidden");
+                document.body.classList.add(
+                    "login-locked"
                 );
-
-                loginBtn.disabled = false;
-
-                loginBtn.textContent =
-                    "LOGIN";
-
+                passwordInput.value = "";
+                showStatus("", "normal");
+            }
+            loginEye.onclick = function () {
+                if (
+                    passwordInput.type === "password"
+                ) {
+                    passwordInput.type = "text";
+                    loginEye.textContent = "🙈";
+                } else {
+                    passwordInput.type = "password";
+                    loginEye.textContent = "👁";
+                }
                 passwordInput.focus();
-
-                return;
+            };
+            async function login() {
+                const password =
+                    passwordInput.value.trim();
+                if (!password) {
+                    showStatus(
+                        "❌ Enter admin password",
+                        "error"
+                    );
+                    passwordInput.focus();
+                    return;
+                }
+                loginBtn.disabled = true;
+                loginBtn.textContent =
+                    "VERIFYING...";
+                showStatus(
+                    "Checking admin access...",
+                    "normal"
+                );
+                try {
+                    const response =
+                        await fetch(
+                            "/api/admin-login",
+                            {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type":
+                                        "application/json"
+                                },
+                                body: JSON.stringify({
+                                    password: password
+                                })
+                            }
+                        );
+                    const data =
+                        await response.json();
+                    if (
+                        !response.ok ||
+                        !data.success
+                    ) {
+                        showStatus(
+                            "❌ " +
+                            (
+                                data.error ||
+                                "Invalid password"
+                            ),
+                            "error"
+                        );
+                        loginBtn.disabled = false;
+                        loginBtn.textContent =
+                            "LOGIN TO DASHBOARD";
+                        passwordInput.focus();
+                        return;
+                    }
+                    showStatus(
+                        "✅ Login successful",
+                        "success"
+                    );
+                    setTimeout(
+                        unlockDashboard,
+                        250
+                    );
+                } catch (error) {
+                    console.error(
+                        "Admin login error:",
+                        error
+                    );
+                    showStatus(
+                        "❌ Backend connection error",
+                        "error"
+                    );
+                    loginBtn.disabled = false;
+                    loginBtn.textContent =
+                        "LOGIN TO DASHBOARD";
+                }
             }
-
-            showStatus(
-                "✅ Login successful",
-                "success"
-            );
-
-            /*
-             * IMPORTANT:
-             * We intentionally do NOT save the
-             * admin password in localStorage.
-             */
-
-            setTimeout(
-                unlockDashboard,
-                250
-            );
-
-        } catch (error) {
-
-            console.error(
-                "Admin login error:",
-                error
-            );
-
-            showStatus(
-                "❌ Backend connection error",
-                "error"
-            );
-
-            loginBtn.disabled = false;
-
-            loginBtn.textContent =
-                "LOGIN";
-        }
-    }
-
-
-    loginBtn.onclick = login;
-
-
-    passwordInput.onkeydown =
-        function (event) {
-
-            if (event.key === "Enter") {
-                login();
-            }
-        };
-
-
-    logoutBtn.onclick =
-        function () {
-
-            lockDashboard();
-
+            loginBtn.onclick = login;
+            passwordInput.onkeydown =
+                function (event) {
+                    if (event.key === "Enter") {
+                        login();
+                    }
+                };
+            logoutBtn.onclick =
+                function () {
+                    lockDashboard();
+                    setTimeout(
+                        function () {
+                            passwordInput.focus();
+                        },
+                        100
+                    );
+                };
             setTimeout(
                 function () {
                     passwordInput.focus();
                 },
-                100
+                200
             );
-        };
-
-
-    setTimeout(
-        function () {
-            passwordInput.focus();
-        },
-        200
-    );
-
-})();
-</script><!-- ================= EXISTING APP ================= --><script src="app.js"></script></body>
+        })();
+    </script>
+    <!-- EXISTING APP LOGIC -->
+    <script src="app.js"></script>
+</body>
 </html>
