@@ -3,483 +3,330 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#070a0f">
-<title>Extension Control Panel</title>
-<link rel="stylesheet" href="style.css">
+    <meta name="theme-color" content="#070b12">
+    <title>Extension Control</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="login-locked">
-<!-- ================= ADMIN LOGIN ================= -->
-<div id="adminLogin">
-<div class="login-box">
-    <div class="login-icon">⚡</div>
-    <div class="login-brand">QUOTEXCODER</div>
-    <h1>Admin Login</h1>
-    <p>
-        Secure Extension Control Panel
-    </p>
-    <label class="login-label">
-        Admin Password
-    </label>
-    <div class="login-input-wrap">
-        <input
-            id="adminPassword"
-            type="password"
-            placeholder="Enter admin password"
-            autocomplete="current-password"
-            spellcheck="false">
-        <button
-            id="loginEye"
-            type="button">
-            👁
+<body class="locked">
+<!-- ================= LOGIN ================= -->
+<div id="adminLogin" class="login-screen">
+    <div class="login-box">
+        <div class="login-logo">⚡</div>
+        <div class="login-brand">
+            <h1>Extension Control</h1>
+            <p>Secure Administrator Access</p>
+        </div>
+        <div class="login-field">
+            <label>Admin Password</label>
+            <div class="password-field">
+                <input
+                    id="adminPassword"
+                    type="password"
+                    placeholder="Enter password"
+                    autocomplete="off"
+                >
+                <button id="loginEye" type="button">👁</button>
+            </div>
+        </div>
+        <div id="loginStatus" class="login-status"></div>
+        <button id="loginBtn" class="login-btn">
+            <span>Unlock Dashboard</span>
+            <b>→</b>
         </button>
-    </div>
-    <div id="loginStatus"></div>
-    <button
-        id="loginBtn"
-        class="login-btn"
-        type="button">
-        LOGIN
-    </button>
-    <div class="login-footer">
-        🔒 Secure Admin Access
+        <div class="login-footer">
+            <span class="online-dot"></span>
+            Control Panel Ready
+        </div>
     </div>
 </div>
-</div>
-<!-- ================= MAIN APP ================= -->
+<!-- ================= APP ================= -->
 <div class="app">
-<!-- HEADER -->
-<header class="topbar">
-    <div class="brand">
-        <div class="brand-icon">
-            ⚡
-        </div>
-        <div>
-            <div class="brand-title">
-                Extension Control
-            </div>
-            <p>
-                Secure Backend Management
-            </p>
-        </div>
-    </div>
-    <div class="top-actions">
-        <button
-            id="refreshBtn"
-            class="btn secondary"
-            type="button">
-            ↻ Refresh
-        </button>
-        <button
-            id="logoutBtn"
-            class="btn secondary"
-            type="button">
-            🔒 Logout
-        </button>
-    </div>
-</header>
-<!-- MESSAGE -->
-<div
-    id="message"
-    class="message">
-</div>
-<!-- STATS -->
-<section class="stats">
-    <div class="stat-card">
-        <div class="stat-icon green">
-            👥
-        </div>
-        <div>
-            <small>Total Users</small>
-            <strong id="totalUsers">0</strong>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon blue">
-            ●
-        </div>
-        <div>
-            <small>Active Users</small>
-            <strong id="activeUsers">0</strong>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon red">
-            🚫
-        </div>
-        <div>
-            <small>Blocked Users</small>
-            <strong id="blockedUsers">0</strong>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon cloud">
-            ☁
-        </div>
-        <div>
-            <small>Backend</small>
-            <strong id="backendStatus">Checking</strong>
-        </div>
-    </div>
-</section>
-<!-- TABS -->
-<nav class="tabs">
-    <button
-        class="tab active"
-        data-file="withdrawal">
-        Withdrawal
-    </button>
-    <button
-        class="tab"
-        data-file="yns">
-        YNS
-    </button>
-    <button
-        class="tab"
-        data-file="wns">
-        WNS
-    </button>
-</nav>
-<!-- SETTINGS -->
-<section
-    id="settingsCard"
-    class="card">
-    <div class="card-header">
-        <div>
-            <h2>Backend Settings</h2>
-            <p>Control extension access and authentication</p>
-        </div>
-        <span
-            id="currentFile"
-            class="file-badge">
-            Withdrawal.json
-        </span>
-    </div>
-    <div class="settings">
-        <div class="setting-row">
+    <!-- HEADER -->
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-icon">⚡</div>
             <div>
-                <strong>Extension Active</strong>
-                <small>
-                    Allow the extension backend to operate.
-                </small>
+                <h1>Extension Control</h1>
+                <p>Manage users, access & backend settings</p>
             </div>
-            <label class="switch">
-                <input
-                    type="checkbox"
-                    id="activeToggle">
-                <span></span>
-            </label>
         </div>
-        <div class="setting-row">
+        <div class="top-actions">
+            <button id="refreshBtn" class="btn secondary">
+                ↻ <span>Refresh</span>
+            </button>
+            <button id="logoutBtn" class="btn secondary">
+                🔒 <span>Logout</span>
+            </button>
+        </div>
+    </header>
+    <!-- MESSAGE -->
+    <div id="message" class="message"></div>
+    <!-- STATS -->
+    <section class="stats">
+        <div class="stat-card">
+            <div class="stat-icon users-icon">👥</div>
             <div>
-                <strong>Password Required</strong>
-                <small>
-                    Require password authentication.
-                </small>
+                <span>Total Users</span>
+                <strong id="totalUsers">0</strong>
             </div>
-            <label class="switch">
-                <input
-                    type="checkbox"
-                    id="passwordToggle">
-                <span></span>
-            </label>
         </div>
+        <div class="stat-card">
+            <div class="stat-icon active-icon">✓</div>
+            <div>
+                <span>Active Users</span>
+                <strong id="activeUsers">0</strong>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon blocked-icon">⊘</div>
+            <div>
+                <span>Blocked Users</span>
+                <strong id="blockedUsers">0</strong>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon backend-icon">☁</div>
+            <div>
+                <span>Backend</span>
+                <strong id="backendStatus">Checking</strong>
+            </div>
+        </div>
+    </section>
+    <!-- TABS -->
+    <div class="tabs">
+        <button class="tab active" data-file="withdrawal">
+            <span>💳</span>
+            Withdrawal
+        </button>
+        <button class="tab" data-file="yns">
+            <span>⚡</span>
+            YNS
+        </button>
+        <button class="tab" data-file="wns">
+            <span>🛡</span>
+            WNS
+        </button>
     </div>
-</section>
-<!-- USERS -->
-<section class="card users-card">
-    <div class="card-header">
-        <div>
-            <div class="section-title-row">
-                <div class="section-icon">
-                    👤
-                </div>
-                <div>
-                    <h2>User Management</h2>
-                    <p>
-                        Click any UID to view complete user details
-                    </p>
+    <!-- SETTINGS -->
+    <section id="settingsCard" class="card">
+        <div class="section-header">
+            <div>
+                <div class="section-title">
+                    <span class="title-icon">⚙</span>
+                    <div>
+                        <h2>Backend Settings</h2>
+                        <p>Control extension access and authentication</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        <button
-            id="addUserBtn"
-            class="btn primary"
-            type="button">
-            ＋ Add UID
-        </button>
-    </div>
-    <!-- SEARCH -->
-    <div class="search-box">
-        <span>⌕</span>
-        <input
-            id="searchInput"
-            type="search"
-            placeholder="Search UID or user name..."
-            autocomplete="off">
-    </div>
-    <!-- TABLE -->
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>UID</th>
-                    <th>User</th>
-                    <th>Password</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="usersTable"></tbody>
-        </table>
-    </div>
-    <!-- EMPTY -->
-    <div
-        id="emptyUsers"
-        class="empty hidden">
-        <div class="empty-icon">
-            👤
-        </div>
-        <strong>No users found</strong>
-        <span>
-            Add a UID to get started.
-        </span>
-    </div>
-</section>
-<!-- BLOCKED -->
-<section class="card">
-    <div class="card-header">
-        <div>
-            <h2>Blocked UIDs</h2>
-            <p>
-                Users currently blocked
-            </p>
-        </div>
-        <span
-            id="blockedCount"
-            class="count-badge">
-            0
-        </span>
-    </div>
-    <div
-        id="blockedList"
-        class="blocked-list">
-    </div>
-</section>
-<!-- SAVE -->
-<div class="save-bar">
-    <div class="save-info">
-        <div class="save-dot"></div>
-        <div>
-            <strong>GitHub Changes</strong>
-            <span>
-                Save your changes when you're ready.
+            <span id="currentFile" class="file-badge">
+                Withdrawal.json
             </span>
         </div>
-    </div>
-    <button
-        id="saveBtn"
-        class="btn primary save-btn"
-        type="button">
-        💾 Save to GitHub
-    </button>
-</div>
-<!-- FOOTER -->
-<footer>
-    <span>Extension Control Panel</span>
-    <span>•</span>
-    <span>GitHub Backend</span>
-</footer>
-</div>
-<!-- ================= USER ADD / EDIT MODAL ================= -->
-<div
-    id="userModal"
-    class="modal hidden">
-<div class="modal-box">
-    <div class="modal-header">
-        <div>
-            <div class="modal-kicker">
-                USER MANAGEMENT
+        <div class="settings">
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-symbol green">✓</div>
+                    <div>
+                        <strong>Extension Active</strong>
+                        <small>Allow the extension backend to operate.</small>
+                    </div>
+                </div>
+                <label class="switch">
+                    <input id="activeToggle" type="checkbox">
+                    <span></span>
+                </label>
             </div>
-            <h2 id="modalTitle">
-                Add UID
-            </h2>
-            <p>
-                Enter user information
-            </p>
-        </div>
-        <button
-            id="closeModalBtn"
-            class="close-btn"
-            type="button">
-            ×
-        </button>
-    </div>
-    <label>UID</label>
-    <input
-        id="uidInput"
-        type="text"
-        placeholder="uid_123456"
-        autocomplete="off">
-    <label>User Name</label>
-    <input
-        id="nameInput"
-        type="text"
-        placeholder="User Name"
-        autocomplete="off">
-    <label>Password</label>
-    <div class="password-input">
-        <input
-            id="userPasswordInput"
-            type="password"
-            placeholder="Enter password"
-            autocomplete="off">
-        <button
-            id="showPasswordBtn"
-            type="button">
-            👁
-        </button>
-    </div>
-    <div class="modal-actions">
-        <button
-            id="cancelBtn"
-            class="btn secondary"
-            type="button">
-            Cancel
-        </button>
-        <button
-            id="confirmUserBtn"
-            class="btn primary"
-            type="button">
-            Save User
-        </button>
-    </div>
-</div>
-</div>
-<!-- ================= USER DETAILS MODAL ================= -->
-<div
-    id="userDetailsModal"
-    class="modal hidden">
-<div class="user-details-box">
-    <div class="details-top">
-        <div class="profile-avatar">
-            👤
-        </div>
-        <button
-            id="closeDetailsBtn"
-            class="close-btn"
-            type="button">
-            ×
-        </button>
-    </div>
-    <div class="profile-info">
-        <div class="profile-label">
-            USER PROFILE
-        </div>
-        <h2 id="detailsName">
-            User
-        </h2>
-        <div
-            id="detailsStatus"
-            class="profile-status">
-            ● ACTIVE
-        </div>
-    </div>
-    <div class="details-grid">
-        <div class="detail-item full">
-            <div class="detail-label">
-                UID
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-symbol blue">🔐</div>
+                    <div>
+                        <strong>Password Required</strong>
+                        <small>Require password authentication for users.</small>
+                    </div>
+                </div>
+                <label class="switch">
+                    <input id="passwordToggle" type="checkbox">
+                    <span></span>
+                </label>
             </div>
-            <div class="detail-value-row">
-                <span
-                    id="detailsUID"
-                    class="detail-value mono">
+        </div>
+    </section>
+    <!-- USERS -->
+    <section class="card users-card">
+        <div class="section-header">
+            <div class="section-title">
+                <span class="title-icon">👥</span>
+                <div>
+                    <h2>User Management</h2>
+                    <p>Click any user to view complete details</p>
+                </div>
+            </div>
+            <button id="addUserBtn" class="btn primary">
+                ＋ Add User
+            </button>
+        </div>
+        <!-- SEARCH -->
+        <div class="search-box">
+            <span>⌕</span>
+            <input
+                id="searchInput"
+                type="search"
+                placeholder="Search UID or user name..."
+                autocomplete="off"
+            >
+        </div>
+        <!-- USER CARDS -->
+        <div id="usersGrid" class="users-grid"></div>
+        <!-- EMPTY -->
+        <div id="emptyUsers" class="empty hidden">
+            <div class="empty-icon">👤</div>
+            <strong>No users found</strong>
+            <span>Try another search or add a new user.</span>
+        </div>
+    </section>
+    <!-- BLOCKED -->
+    <section class="card">
+        <div class="section-header">
+            <div class="section-title">
+                <span class="title-icon danger-title">⊘</span>
+                <div>
+                    <h2>Blocked Users</h2>
+                    <p>Users currently restricted from access</p>
+                </div>
+            </div>
+            <span id="blockedCount" class="count-badge">0</span>
+        </div>
+        <div id="blockedList" class="blocked-list"></div>
+    </section>
+    <!-- SAVE -->
+    <div class="save-bar">
+        <div class="save-info">
+            <div class="save-icon">☁</div>
+            <div>
+                <strong>GitHub Backend</strong>
+                <span>Save your pending changes to GitHub.</span>
+            </div>
+        </div>
+        <button id="saveBtn" class="btn primary save-btn">
+            💾 Save to GitHub
+        </button>
+    </div>
+    <footer>
+        <span>Extension Control</span>
+        <i>•</i>
+        <span>Secure Backend Manager</span>
+    </footer>
+</div>
+<!-- ================= USER DETAIL MODAL ================= -->
+<div id="userDetailModal" class="modal hidden">
+    <div class="modal-box user-detail-box">
+        <div class="detail-top">
+            <div class="user-avatar" id="detailAvatar">
+                U
+            </div>
+            <div class="detail-heading">
+                <span class="detail-label">USER PROFILE</span>
+                <h2 id="detailName">User</h2>
+                <span id="detailStatus" class="status-badge status-active">
+                    ACTIVE
                 </span>
-                <button
-                    id="copyUIDBtn"
-                    class="copy-btn"
-                    type="button">
+            </div>
+            <button id="closeDetailBtn" class="close-btn">×</button>
+        </div>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span>UID</span>
+                <strong id="detailUID">—</strong>
+                <button id="copyUIDBtn" class="copy-btn">
                     Copy
                 </button>
             </div>
-        </div>
-        <div class="detail-item">
-            <div class="detail-label">
-                USER NAME
-            </div>
-            <div
-                id="detailsUserName"
-                class="detail-value">
-            </div>
-        </div>
-        <div class="detail-item">
-            <div class="detail-label">
-                PASSWORD
-            </div>
-            <div class="detail-value-row">
-                <span
-                    id="detailsPassword"
-                    class="detail-value password-value">
-                </span>
-                <button
-                    id="detailsPasswordToggle"
-                    class="copy-btn"
-                    type="button">
-                    Show
-                </button>
+            <div class="detail-item">
+                <span>Password</span>
+                <div class="detail-password">
+                    <strong id="detailPassword">—</strong>
+                    <button id="copyPasswordBtn" class="copy-btn">
+                        Copy
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="details-actions">
-        <button
-            id="detailsEditBtn"
-            class="btn secondary"
-            type="button">
-            ✎ Edit User
-        </button>
-        <button
-            id="detailsBlockBtn"
-            class="btn secondary"
-            type="button">
-            Block User
-        </button>
-        <button
-            id="detailsDeleteBtn"
-            class="btn danger"
-            type="button">
-            Delete User
-        </button>
+        <div class="detail-actions">
+            <button id="detailEditBtn" class="btn secondary">
+                ✏ Edit User
+            </button>
+            <button id="detailBlockBtn" class="btn secondary">
+                ⊘ Block User
+            </button>
+            <button id="detailDeleteBtn" class="btn danger">
+                Delete
+            </button>
+        </div>
     </div>
 </div>
+<!-- ================= ADD / EDIT MODAL ================= -->
+<div id="userModal" class="modal hidden">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <span class="detail-label">USER MANAGEMENT</span>
+                <h2 id="modalTitle">Add User</h2>
+                <p>Create or update user credentials.</p>
+            </div>
+            <button id="closeModalBtn" class="close-btn">×</button>
+        </div>
+        <label>UID</label>
+        <input
+            id="uidInput"
+            type="text"
+            placeholder="Enter UID"
+            autocomplete="off"
+        >
+        <label>User Name</label>
+        <input
+            id="nameInput"
+            type="text"
+            placeholder="Enter user name"
+            autocomplete="off"
+        >
+        <label>Password</label>
+        <div class="password-input">
+            <input
+                id="userPasswordInput"
+                type="password"
+                placeholder="Enter password"
+                autocomplete="off"
+            >
+            <button id="showPasswordBtn" type="button">
+                👁
+            </button>
+        </div>
+        <div class="modal-actions">
+            <button id="cancelBtn" class="btn secondary">
+                Cancel
+            </button>
+            <button id="confirmUserBtn" class="btn primary">
+                Save User
+            </button>
+        </div>
+    </div>
 </div>
 <!-- ================= CONFIRM MODAL ================= -->
-<div
-    id="confirmModal"
-    class="modal hidden">
-<div class="modal-box small">
-    <div class="confirm-icon">
-        ⚠
+<div id="confirmModal" class="modal hidden">
+    <div class="modal-box confirm-box">
+        <div class="confirm-icon">⚠</div>
+        <h2 id="confirmTitle">Confirm Action</h2>
+        <p id="confirmText">Are you sure?</p>
+        <div class="modal-actions">
+            <button id="confirmCancel" class="btn secondary">
+                Cancel
+            </button>
+            <button id="confirmOk" class="btn danger">
+                Confirm
+            </button>
+        </div>
     </div>
-    <h2 id="confirmTitle">
-        Confirm Action
-    </h2>
-    <p id="confirmText">
-        Are you sure?
-    </p>
-    <div class="modal-actions">
-        <button
-            id="confirmCancel"
-            class="btn secondary"
-            type="button">
-            Cancel
-        </button>
-        <button
-            id="confirmOk"
-            class="btn danger"
-            type="button">
-            Confirm
-        </button>
-    </div>
-</div>
 </div>
 <script src="app.js"></script>
 </body>
