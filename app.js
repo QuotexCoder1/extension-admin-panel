@@ -17,7 +17,7 @@ const FILE_NAMES = {
     withdrawal: "Withdrawal.json",
     yns: "yns.json",
     wns: "wns.json",
-    qxControl: "control1.json"
+    qx-control: "control1.json"
 };
 
 
