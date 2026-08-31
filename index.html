@@ -3,166 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#070a0f">
+    <meta name="theme-color" content="#070b12">
     <title>Extension Control</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="login-locked">
-<!-- ================= LOGIN ================= -->
-<div id="adminLogin" class="login-screen">
+<body class="locked">
+<!-- LOGIN -->
+<div id="loginScreen" class="login-screen">
     <div class="login-glow"></div>
-<div class="login-box">
+<div class="login-card">
     <div class="login-logo">
-        <span>⚡</span>
+        ⚡
     </div>
-    <div class="login-heading">
-        <div class="eyebrow">SECURE ACCESS</div>
-        <h1>Admin Control</h1>
-        <p>Manage your extension users securely.</p>
+    <div class="login-title">
+        Extension Control
     </div>
-    <label class="field-label">Admin Password</label>
-    <div class="password-field">
+    <div class="login-subtitle">
+        Secure Admin Dashboard
+    </div>
+    <div class="login-label">
+        Admin Password
+    </div>
+    <div class="login-input">
         <input
             id="adminPassword"
             type="password"
             placeholder="Enter password"
-            autocomplete="current-password"
-            spellcheck="false">
-        <button id="loginEye" type="button">👁</button>
+            autocomplete="off"
+        >
+        <button id="passwordEye" type="button">👁</button>
     </div>
-    <div id="loginStatus" class="login-status"></div>
-    <button id="loginBtn" class="login-btn" type="button">
-        <span>LOGIN</span>
-        <span>→</span>
+    <div id="loginError" class="login-error"></div>
+    <button id="loginButton" class="login-button">
+        <span>Unlock Dashboard</span>
+        <b>→</b>
     </button>
-    <div class="login-secure">
-        <span>●</span> Secure Admin Panel
+    <div class="login-security">
+        🔒 Secure Admin Access
     </div>
 </div>
 </div>
-<!-- ================= APP ================= -->
-<div class="app">
-<!-- HEADER -->
+<!-- APP -->
+<div id="app" class="app">
 <header class="topbar">
     <div class="brand">
-        <div class="brand-icon">⚡</div>
+        <div class="brand-logo">⚡</div>
         <div>
-            <div class="brand-title">
-                Extension Control
-                <span class="live-dot"></span>
-            </div>
-            <p>Professional user management dashboard</p>
+            <h1>Extension Control</h1>
+            <p>Professional Admin Dashboard</p>
         </div>
     </div>
     <div class="header-actions">
-        <button id="refreshBtn" class="btn secondary">
-            <span>↻</span>
-            Refresh
+        <button id="refreshBtn" class="header-btn">
+            ↻ <span>Refresh</span>
         </button>
-        <button id="logoutBtn" class="btn logout-btn">
-            🔒 Logout
+        <button id="logoutBtn" class="header-btn logout">
+            🔒 <span>Logout</span>
         </button>
     </div>
 </header>
-<!-- MESSAGE -->
 <div id="message" class="message"></div>
 <!-- STATS -->
 <section class="stats">
     <div class="stat-card">
         <div class="stat-icon users-icon">👥</div>
-        <div class="stat-info">
+        <div>
             <span>Total Users</span>
             <strong id="totalUsers">0</strong>
-            <small>Registered users</small>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon active-icon">✓</div>
-        <div class="stat-info">
+        <div class="stat-icon active-icon">●</div>
+        <div>
             <span>Active Users</span>
             <strong id="activeUsers">0</strong>
-            <small>Currently allowed</small>
         </div>
     </div>
     <div class="stat-card">
         <div class="stat-icon blocked-icon">⊘</div>
-        <div class="stat-info">
+        <div>
             <span>Blocked Users</span>
             <strong id="blockedUsers">0</strong>
-            <small>Access restricted</small>
         </div>
     </div>
     <div class="stat-card">
         <div class="stat-icon cloud-icon">☁</div>
-        <div class="stat-info">
+        <div>
             <span>Backend</span>
             <strong id="backendStatus">Checking</strong>
-            <small>GitHub connection</small>
         </div>
     </div>
 </section>
 <!-- TABS -->
-<div class="section-tabs">
-    <div class="tabs-label">
-        <span>BACKEND FILES</span>
-    </div>
-    <nav class="tabs">
+<div class="tabs-wrap">
+    <div class="tabs">
         <button class="tab active" data-file="withdrawal">
             <span>💳</span>
             Withdrawal
         </button>
         <button class="tab" data-file="yns">
-            <span>Y</span>
+            <span>🔐</span>
             YNS
         </button>
         <button class="tab" data-file="wns">
-            <span>W</span>
+            <span>🛡</span>
             WNS
         </button>
-    </nav>
+    </div>
 </div>
 <!-- SETTINGS -->
 <section id="settingsCard" class="card settings-card">
-    <div class="card-header">
-        <div class="section-heading">
-            <div class="mini-icon">⚙</div>
-            <div>
-                <h2>Backend Settings</h2>
-                <p>Control extension access and authentication.</p>
-            </div>
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">SYSTEM</span>
+            <h2>Backend Settings</h2>
+            <p>Control extension access and authentication.</p>
         </div>
         <span id="currentFile" class="file-badge">
             Withdrawal.json
         </span>
     </div>
-    <div class="settings">
-        <div class="setting-row">
-            <div class="setting-info">
-                <div class="setting-title">
-                    <span class="setting-dot green"></span>
-                    Extension Active
-                </div>
-                <small>
-                    Allow the extension backend to operate.
-                </small>
+    <div class="settings-grid">
+        <div class="setting">
+            <div>
+                <strong>Extension Active</strong>
+                <small>Allow the extension backend to operate.</small>
             </div>
             <label class="switch">
-                <input type="checkbox" id="activeToggle">
+                <input id="activeToggle" type="checkbox">
                 <span></span>
             </label>
         </div>
-        <div class="setting-row">
-            <div class="setting-info">
-                <div class="setting-title">
-                    <span class="setting-dot blue"></span>
-                    Password Required
-                </div>
-                <small>
-                    Require password authentication.
-                </small>
+        <div class="setting">
+            <div>
+                <strong>Password Required</strong>
+                <small>Require password authentication.</small>
             </div>
             <label class="switch">
-                <input type="checkbox" id="passwordToggle">
+                <input id="passwordToggle" type="checkbox">
                 <span></span>
             </label>
         </div>
@@ -170,215 +148,170 @@
 </section>
 <!-- USERS -->
 <section class="card users-card">
-    <div class="card-header users-header">
-        <div class="section-heading">
-            <div class="mini-icon purple">👤</div>
-            <div>
-                <h2>Users</h2>
-                <p>Click any user to view their complete profile.</p>
-            </div>
+    <div class="section-heading users-heading">
+        <div>
+            <span class="eyebrow">ACCESS CONTROL</span>
+            <h2>User Management</h2>
+            <p>Click any UID to open its professional profile.</p>
         </div>
-        <button id="addUserBtn" class="btn primary add-btn">
+        <button id="addUserBtn" class="primary-btn">
             <span>＋</span>
             Add User
         </button>
     </div>
-    <!-- SEARCH -->
-    <div class="toolbar">
+    <div class="search-area">
         <div class="search-box">
             <span>⌕</span>
             <input
                 id="searchInput"
                 type="search"
                 placeholder="Search UID or user name..."
-                autocomplete="off">
-            <kbd>⌘ K</kbd>
+                autocomplete="off"
+            >
         </div>
-        <div class="result-count">
-            <span id="visibleUsers">0</span> users
+        <div class="result-label">
+            <span id="resultCount">0</span> users
         </div>
     </div>
     <!-- USER CARDS -->
     <div id="usersGrid" class="users-grid"></div>
     <div id="emptyUsers" class="empty hidden">
-        <div class="empty-icon">⌕</div>
+        <div class="empty-icon">👤</div>
         <strong>No users found</strong>
-        <span>
-            Try another search or add a new user.
-        </span>
+        <span>Try another search or add a new UID.</span>
     </div>
 </section>
 <!-- BLOCKED -->
 <section class="card blocked-card">
-    <div class="card-header">
-        <div class="section-heading">
-            <div class="mini-icon red">⊘</div>
-            <div>
-                <h2>Blocked UIDs</h2>
-                <p>Users currently restricted from access.</p>
-            </div>
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">SECURITY</span>
+            <h2>Blocked UIDs</h2>
+            <p>Users currently restricted from access.</p>
         </div>
         <span id="blockedCount" class="count-badge">0</span>
     </div>
     <div id="blockedList" class="blocked-list"></div>
 </section>
-<!-- SAVE BAR -->
+<!-- SAVE -->
 <div class="save-bar">
     <div class="save-info">
-        <div class="save-icon">☁</div>
+        <div class="save-dot"></div>
         <div>
             <strong>Unsaved changes</strong>
             <span>Save your changes to update GitHub.</span>
         </div>
     </div>
-    <button id="saveBtn" class="btn primary save-btn">
-        <span>💾</span>
-        Save to GitHub
+    <button id="saveBtn" class="save-btn">
+        💾 Save to GitHub
     </button>
 </div>
-<!-- FOOTER -->
 <footer>
     <span>Extension Control</span>
     <i>•</i>
-    <span>Secure Admin Dashboard</span>
+    <span>Admin Dashboard</span>
     <i>•</i>
-    <span>GitHub Backend</span>
+    <span>Secure Management</span>
 </footer>
 </div>
-<!-- ================= USER PROFILE MODAL ================= -->
-<div id="profileModal" class="modal hidden">
-<div class="profile-box">
-    <button id="closeProfileBtn" class="modal-close">×</button>
-    <div class="profile-cover"></div>
-    <div class="profile-content">
+<!-- USER DETAIL MODAL -->
+<div id="userDetailModal" class="modal hidden">
+<div class="profile-modal">
+    <button id="closeDetailBtn" class="modal-close">×</button>
+    <div class="profile-top">
         <div id="profileAvatar" class="profile-avatar">
             U
         </div>
-        <div class="profile-main">
-            <div>
-                <span class="profile-label">USER PROFILE</span>
-                <h2 id="profileName">User</h2>
-                <div id="profileStatus" class="profile-status active">
-                    ● ACTIVE
-                </div>
-            </div>
-            <button id="profileEditBtn" class="btn primary">
-                ✎ Edit User
-            </button>
+        <div>
+            <span class="profile-label">USER PROFILE</span>
+            <h2 id="profileName">User</h2>
+            <span id="profileStatus" class="profile-status active">
+                ACTIVE
+            </span>
         </div>
-        <div class="profile-details">
-            <div class="detail-box">
-                <span class="detail-icon">#</span>
-                <div>
-                    <small>UID</small>
-                    <strong id="profileUID">—</strong>
-                </div>
-                <button id="copyUidBtn" class="copy-btn">
-                    Copy
-                </button>
-            </div>
-            <div class="detail-box">
-                <span class="detail-icon">👤</span>
-                <div>
-                    <small>NAME</small>
-                    <strong id="profileName2">—</strong>
-                </div>
-            </div>
-            <div class="detail-box">
-                <span class="detail-icon">🔑</span>
-                <div class="detail-password">
-                    <small>PASSWORD</small>
-                    <strong id="profilePassword">••••••••</strong>
-                </div>
-                <button id="profilePasswordBtn" class="copy-btn">
-                    Show
-                </button>
+    </div>
+    <div class="profile-details">
+        <div class="detail-item">
+            <span>UID</span>
+            <div class="detail-value">
+                <code id="profileUID">—</code>
+                <button id="copyUID" title="Copy UID">⧉</button>
             </div>
         </div>
-        <div class="profile-actions">
-            <button id="profileBlockBtn" class="btn secondary">
-                Block User
-            </button>
-            <button id="profileDeleteBtn" class="btn danger">
-                Delete User
-            </button>
+        <div class="detail-item">
+            <span>User Name</span>
+            <strong id="profileUserName">—</strong>
         </div>
+        <div class="detail-item">
+            <span>Password</span>
+            <div class="detail-value">
+                <code id="profilePassword">••••••••</code>
+                <button id="toggleProfilePassword">👁</button>
+            </div>
+        </div>
+        <div class="detail-item">
+            <span>Account Status</span>
+            <strong id="profileAccountStatus">Active</strong>
+        </div>
+    </div>
+    <div class="profile-actions">
+        <button id="profileEditBtn" class="primary-btn">
+            ✎ Edit User
+        </button>
+        <button id="profileBlockBtn" class="secondary-btn">
+            Block User
+        </button>
+        <button id="profileDeleteBtn" class="danger-btn">
+            Delete
+        </button>
     </div>
 </div>
 </div>
-<!-- ================= ADD / EDIT MODAL ================= -->
+<!-- ADD / EDIT MODAL -->
 <div id="userModal" class="modal hidden">
-<div class="modal-box">
+<div class="form-modal">
     <div class="modal-header">
         <div>
-            <span class="modal-eyebrow">USER MANAGEMENT</span>
+            <span class="profile-label">USER MANAGEMENT</span>
             <h2 id="modalTitle">Add User</h2>
-            <p>Enter the user's account information.</p>
+            <p>Create or edit user access.</p>
         </div>
-        <button id="closeModalBtn" class="modal-close-small">
+        <button id="closeModalBtn" class="modal-close">
             ×
         </button>
     </div>
-    <div class="form-group">
-        <label>UID</label>
-        <div class="input-wrap">
-            <span>#</span>
-            <input
-                id="uidInput"
-                type="text"
-                placeholder="uid_123456"
-                autocomplete="off">
-        </div>
+    <label>UID</label>
+    <input
+        id="uidInput"
+        type="text"
+        placeholder="Enter UID"
+        autocomplete="off"
+    >
+    <label>User Name</label>
+    <input
+        id="nameInput"
+        type="text"
+        placeholder="Enter user name"
+        autocomplete="off"
+    >
+    <label>Password</label>
+    <div class="password-field">
+        <input
+            id="userPasswordInput"
+            type="password"
+            placeholder="Enter password"
+            autocomplete="off"
+        >
+        <button id="showPasswordBtn" type="button">
+            👁
+        </button>
     </div>
-    <div class="form-group">
-        <label>User Name</label>
-        <div class="input-wrap">
-            <span>👤</span>
-            <input
-                id="nameInput"
-                type="text"
-                placeholder="Enter user name"
-                autocomplete="off">
-        </div>
-    </div>
-    <div class="form-group">
-        <label>Password</label>
-        <div class="input-wrap">
-            <span>🔑</span>
-            <input
-                id="userPasswordInput"
-                type="password"
-                placeholder="Enter password"
-                autocomplete="off">
-            <button id="showPasswordBtn" type="button">
-                👁
-            </button>
-        </div>
-    </div>
-    <div class="modal-actions">
-        <button id="cancelBtn" class="btn secondary">
+    <div class="form-actions">
+        <button id="cancelBtn" class="secondary-btn">
             Cancel
         </button>
-        <button id="confirmUserBtn" class="btn primary">
+        <button id="confirmUserBtn" class="primary-btn">
             Save User
-        </button>
-    </div>
-</div>
-</div>
-<!-- ================= CONFIRM MODAL ================= -->
-<div id="confirmModal" class="modal hidden">
-<div class="confirm-box">
-    <div id="confirmIcon" class="confirm-icon">⚠</div>
-    <h2 id="confirmTitle">Confirm Action</h2>
-    <p id="confirmText">
-        Are you sure you want to continue?
-    </p>
-    <div class="modal-actions">
-        <button id="confirmCancel" class="btn secondary">
-            Cancel
-        </button>
-        <button id="confirmOk" class="btn danger">
-            Confirm
         </button>
     </div>
 </div>
