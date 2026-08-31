@@ -27,6 +27,7 @@ export default async (req) => {
     }
 
     try {
+
         const token = process.env.GITHUB_TOKEN;
 
         if (!token) {
@@ -39,6 +40,7 @@ export default async (req) => {
 
         const file = body.file;
         const newData = body.data;
+        const sha = body.sha;
 
         const repositories = {
             withdrawal: {
@@ -57,12 +59,6 @@ export default async (req) => {
                 owner: "QuotexCoder1",
                 repo: "wns",
                 path: "wns.json"
-            },
-
-            qxcontrol: {
-                owner: "nasir12736",
-                repo: "qx-control",
-                path: "control1.json"
             }
         };
 
@@ -81,25 +77,33 @@ export default async (req) => {
             );
         }
 
-        const config = repositories[file];
+        const config =
+            repositories[file];
 
         const url =
             `https://api.github.com/repos/` +
             `${config.owner}/${config.repo}/contents/` +
             `${config.path}`;
 
-        // Get latest SHA
-        const latestResponse = await fetch(url, {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-                "User-Agent": "Extension-Control-Panel"
-            }
-        });
+        /*
+         * Get latest SHA from GitHub.
+         * This prevents an old SHA from causing
+         * unnecessary update failures.
+         */
 
-        const latest = await latestResponse.json();
+        const latestResponse =
+            await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                    "User-Agent": "Extension-Control-Panel"
+                }
+            });
+
+        const latest =
+            await latestResponse.json();
 
         if (!latestResponse.ok) {
             throw new Error(
@@ -108,49 +112,62 @@ export default async (req) => {
             );
         }
 
-        if (!latest.sha) {
+        const latestSha =
+            latest.sha || sha;
+
+        if (!latestSha) {
             throw new Error(
                 "GitHub file SHA is missing"
             );
         }
 
-        // Convert JSON to Base64
-        const content = JSON.stringify(
-            newData,
-            null,
-            2
-        );
+        /*
+         * Convert JSON into Base64
+         */
 
-        const encoded = Buffer
-            .from(content, "utf8")
-            .toString("base64");
+        const content =
+            JSON.stringify(
+                newData,
+                null,
+                2
+            );
 
-        // Update GitHub
-        const updateResponse = await fetch(url, {
-            method: "PUT",
+        const encoded =
+            Buffer
+                .from(content, "utf8")
+                .toString("base64");
 
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Accept": "application/vnd.github+json",
-                "Content-Type": "application/json",
-                "X-GitHub-Api-Version": "2022-11-28",
-                "User-Agent": "Extension-Control-Panel"
-            },
+        /*
+         * Update GitHub file
+         */
 
-            body: JSON.stringify({
-                message:
-                    `Update ${config.path} from Admin Panel`,
+        const updateResponse =
+            await fetch(url, {
+                method: "PUT",
 
-                content: encoded,
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/vnd.github+json",
+                    "Content-Type": "application/json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                    "User-Agent": "Extension-Control-Panel"
+                },
 
-                sha: latest.sha
-            })
-        });
+                body: JSON.stringify({
+                    message:
+                        `Update ${config.path} from Admin Panel`,
+
+                    content: encoded,
+
+                    sha: latestSha
+                })
+            });
 
         const result =
             await updateResponse.json();
 
         if (!updateResponse.ok) {
+
             throw new Error(
                 `GitHub update failed: ` +
                 `${updateResponse.status} - ` +
@@ -177,6 +194,7 @@ export default async (req) => {
         );
 
     } catch (error) {
+
         console.error(
             "save-data error:",
             error
