@@ -2,24 +2,9 @@ import crypto from "crypto";
 
 export default async function handler(req, res) {
 
-    // ==========================================
-    // CORS
-    // ==========================================
-
-    res.setHeader(
-        "Access-Control-Allow-Origin",
-        "*"
-    );
-
-    res.setHeader(
-        "Access-Control-Allow-Methods",
-        "POST, OPTIONS"
-    );
-
-    res.setHeader(
-        "Access-Control-Allow-Headers",
-        "Content-Type"
-    );
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
     if (req.method === "OPTIONS") {
         return res.status(204).end();
@@ -33,86 +18,56 @@ export default async function handler(req, res) {
     }
 
     // ==========================================
-    // VERIFY ADMIN SESSION
+    // ADMIN SESSION
     // ==========================================
 
-    const cookies =
-        req.headers.cookie || "";
+    const cookies = req.headers.cookie || "";
 
-    const match =
-        cookies.match(
-            /(?:^|;\s*)admin_session=([^;]+)/
-        );
+    const match = cookies.match(
+        /(?:^|;\s*)admin_session=([^;]+)/
+    );
 
     if (!match) {
-
         return res.status(401).json({
             success: false,
             error: "Admin login required"
         });
     }
 
-    const sessionToken =
-        match[1];
-
     try {
 
-        const decoded =
-            Buffer
-                .from(
-                    sessionToken,
-                    "base64url"
-                )
-                .toString("utf8");
+        const sessionToken = match[1];
 
-        const parts =
-            decoded.split(":");
+        const decoded = Buffer
+            .from(sessionToken, "base64url")
+            .toString("utf8");
+
+        const parts = decoded.split(":");
 
         if (parts.length !== 3) {
-            throw new Error(
-                "Invalid session"
-            );
+            throw new Error("Invalid session");
         }
 
-        const type =
-            parts[0];
-
-        const expiresAt =
-            parts[1];
-
-        const signature =
-            parts[2];
+        const type = parts[0];
+        const expiresAt = parts[1];
+        const signature = parts[2];
 
         if (type !== "admin") {
-            throw new Error(
-                "Invalid session type"
-            );
+            throw new Error("Invalid session type");
         }
 
-        if (
-            !Number.isFinite(
-                Number(expiresAt)
-            )
-        ) {
-            throw new Error(
-                "Invalid session expiry"
-            );
+        if (!Number.isFinite(Number(expiresAt))) {
+            throw new Error("Invalid expiry");
         }
 
-        if (
-            Date.now() >
-            Number(expiresAt)
-        ) {
-            throw new Error(
-                "Session expired"
-            );
+        if (Date.now() > Number(expiresAt)) {
+            throw new Error("Session expired");
         }
 
-        const sessionSecret =
+        const secret =
             process.env.ADMIN_SESSION_SECRET;
 
-        if (!sessionSecret) {
-
+        if (!secret) {
             return res.status(500).json({
                 success: false,
                 error:
@@ -125,10 +80,7 @@ export default async function handler(req, res) {
 
         const expectedSignature =
             crypto
-                .createHmac(
-                    "sha256",
-                    sessionSecret
-                )
+                .createHmac("sha256", secret)
                 .update(payload)
                 .digest("hex");
 
@@ -136,9 +88,7 @@ export default async function handler(req, res) {
             signature.length !==
             expectedSignature.length
         ) {
-            throw new Error(
-                "Invalid session signature"
-            );
+            throw new Error("Invalid signature");
         }
 
         if (
@@ -147,51 +97,43 @@ export default async function handler(req, res) {
                 Buffer.from(expectedSignature)
             )
         ) {
-            throw new Error(
-                "Invalid session signature"
-            );
+            throw new Error("Invalid signature");
         }
 
-    } catch (error) {
+    } catch {
 
         return res.status(401).json({
             success: false,
-            error:
-                "Invalid or expired admin session"
+            error: "Invalid or expired admin session"
         });
     }
 
     // ==========================================
-    // GITHUB TOKEN
+    // TOKEN
     // ==========================================
 
     const token =
         process.env.GITHUB_TOKEN;
 
     if (!token) {
-
         return res.status(500).json({
             success: false,
             error:
-                "GITHUB_TOKEN is not configured in Vercel"
+                "GITHUB_TOKEN is not configured"
         });
     }
 
     // ==========================================
-    // REQUEST DATA
+    // REQUEST
     // ==========================================
 
-    const body =
-        req.body || {};
+    const body = req.body || {};
 
-    const file =
-        body.file;
-
-    const newData =
-        body.data;
+    const file = body.file;
+    const newData = body.data;
 
     // ==========================================
-    // ALLOWED REPOSITORIES
+    // REPOSITORIES
     // ==========================================
 
     const repositories = {
@@ -212,8 +154,13 @@ export default async function handler(req, res) {
             owner: "QuotexCoder1",
             repo: "wns",
             path: "wns.json"
-        }
+        },
 
+        control: {
+            owner: "nasir12736",
+            repo: "qx-control",
+            path: "control1.json"
+        }
     };
 
     // ==========================================
@@ -224,8 +171,7 @@ export default async function handler(req, res) {
 
         return res.status(400).json({
             success: false,
-            error:
-                "Invalid backend file"
+            error: "Invalid backend file"
         });
     }
 
@@ -237,8 +183,7 @@ export default async function handler(req, res) {
 
         return res.status(400).json({
             success: false,
-            error:
-                "Invalid JSON data"
+            error: "Invalid JSON data"
         });
     }
 
@@ -253,7 +198,7 @@ export default async function handler(req, res) {
     try {
 
         // ======================================
-        // GET CURRENT SHA
+        // GET LATEST SHA
         // ======================================
 
         const currentResponse =
@@ -263,7 +208,6 @@ export default async function handler(req, res) {
                     method: "GET",
 
                     headers: {
-
                         "Authorization":
                             `Bearer ${token}`,
 
@@ -300,9 +244,7 @@ export default async function handler(req, res) {
         if (!current.sha) {
 
             return res.status(500).json({
-
                 success: false,
-
                 error:
                     `${config.repo}: GitHub SHA missing`
             });
@@ -321,14 +263,11 @@ export default async function handler(req, res) {
 
         const encoded =
             Buffer
-                .from(
-                    jsonText,
-                    "utf8"
-                )
+                .from(jsonText, "utf8")
                 .toString("base64");
 
         // ======================================
-        // UPDATE GITHUB
+        // UPDATE
         // ======================================
 
         const updateResponse =
@@ -339,7 +278,6 @@ export default async function handler(req, res) {
                     method: "PUT",
 
                     headers: {
-
                         "Authorization":
                             `Bearer ${token}`,
 
@@ -366,7 +304,6 @@ export default async function handler(req, res) {
 
                         sha:
                             current.sha
-
                     })
                 }
             );
@@ -389,10 +326,6 @@ export default async function handler(req, res) {
             });
         }
 
-        // ======================================
-        // SUCCESS
-        // ======================================
-
         return res.status(200).json({
 
             success: true,
@@ -408,7 +341,6 @@ export default async function handler(req, res) {
 
             commit:
                 result.commit?.sha || null
-
         });
 
     } catch (error) {
@@ -419,13 +351,10 @@ export default async function handler(req, res) {
         );
 
         return res.status(500).json({
-
             success: false,
-
             error:
                 error.message ||
                 "Server error"
-
         });
     }
 }
