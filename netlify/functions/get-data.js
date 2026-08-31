@@ -13,8 +13,20 @@ export default async (req) => {
         });
     }
 
-    try {
+    if (req.method !== "GET") {
+        return new Response(
+            JSON.stringify({
+                success: false,
+                error: "Method not allowed"
+            }),
+            {
+                status: 405,
+                headers
+            }
+        );
+    }
 
+    try {
         const token = process.env.GITHUB_TOKEN;
 
         if (!token) {
@@ -40,11 +52,16 @@ export default async (req) => {
                 owner: "QuotexCoder1",
                 repo: "wns",
                 path: "wns.json"
+            },
+
+            qxcontrol: {
+                owner: "nasir12736",
+                repo: "qx-control",
+                path: "control1.json"
             }
         };
 
         async function getGitHubFile(config) {
-
             const url =
                 `https://api.github.com/repos/` +
                 `${config.owner}/${config.repo}/contents/` +
@@ -63,7 +80,6 @@ export default async (req) => {
             const data = await response.json();
 
             if (!response.ok) {
-
                 throw new Error(
                     `${config.repo}: GitHub HTTP ${response.status} - ` +
                     `${data.message || "Unable to read file"}`
@@ -76,11 +92,10 @@ export default async (req) => {
                 );
             }
 
-            const decoded =
-                Buffer.from(
-                    data.content.replace(/\n/g, ""),
-                    "base64"
-                ).toString("utf8");
+            const decoded = Buffer.from(
+                data.content.replace(/\n/g, ""),
+                "base64"
+            ).toString("utf8");
 
             let json;
 
@@ -100,24 +115,18 @@ export default async (req) => {
             };
         }
 
-        const results =
-            await Promise.all(
-                Object.entries(repositories).map(
-                    async ([name, config]) => {
+        const results = await Promise.all(
+            Object.entries(repositories).map(
+                async ([name, config]) => {
+                    const result =
+                        await getGitHubFile(config);
 
-                        const result =
-                            await getGitHubFile(config);
+                    return [name, result];
+                }
+            )
+        );
 
-                        return [
-                            name,
-                            result
-                        ];
-                    }
-                )
-            );
-
-        const files =
-            Object.fromEntries(results);
+        const files = Object.fromEntries(results);
 
         return new Response(
             JSON.stringify({
@@ -131,7 +140,6 @@ export default async (req) => {
         );
 
     } catch (error) {
-
         console.error(
             "get-data error:",
             error
