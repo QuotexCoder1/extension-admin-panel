@@ -1,932 +1,488 @@
-"use strict";
-
-/*
-|--------------------------------------------------------------------------
-| CONFIG
-|--------------------------------------------------------------------------
-*/
-
 const API = {
-    login: "/api/admin-login",
-    logout: "/api/admin-logout",
-    getData: "/api/get-data",
-    saveData: "/api/save-data"
+    get: "/api/get-data",
+    save: "/api/save-data"
 };
-
 const FILE_NAMES = {
     withdrawal: "Withdrawal.json",
     yns: "yns.json",
     wns: "wns.json",
-    qx-control: "control1.json"
+    qxControl: "control1.json"
 };
-
-
-/*
-|--------------------------------------------------------------------------
-| STATE
-|--------------------------------------------------------------------------
-*/
-
-let backendFiles = {};
-
+let files = {};
 let currentFile = "withdrawal";
-
-let selectedUserUID = null;
-
+let selectedUID = null;
 let editingUID = null;
-
-let pendingConfirmAction = null;
-
+let passwordVisible = false;
 let dirty = false;
-
-
-/*
-|--------------------------------------------------------------------------
-| HELPERS
-|--------------------------------------------------------------------------
-*/
-
 const $ = id => document.getElementById(id);
-
-function escapeHTML(value) {
-    return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+document.addEventListener("DOMContentLoaded", () => {
+    bindEvents();
+    checkLogin();
+});
+function bindEvents() {
+    $("loginBtn")?.addEventListener("click", login);
+    $("adminPassword")?.addEventListener("keydown", e => {
+        if (e.key === "Enter") login();
+    });
+    $("loginEye")?.addEventListener("click", () => {
+        const input = $("adminPassword");
+        input.type = input.type === "password"
+            ? "text"
+            : "password";
+    });
+    $("logoutBtn")?.addEventListener("click", logout);
+    $("refreshBtn")?.addEventListener("click", loadData);
+    $("saveBtn")?.addEventListener("click", saveCurrentFile);
+    $("searchInput")?.addEventListener("input", renderUsers);
+    $("clearSearch")?.addEventListener("click", () => {
+        $("searchInput").value = "";
+        renderUsers();
+    });
+    $("addUserBtn")?.addEventListener("click", () => openUserForm());
+    $("emptyAddBtn")?.addEventListener("click", () => openUserForm());
+    $("closeDetailBtn")?.addEventListener("click", closeDetail);
+    $("detailEditBtn")?.addEventListener("click", () => {
+        if (selectedUID) openUserForm(selectedUID);
+    });
+    $("detailBlockBtn")?.addEventListener("click", toggleSelectedBlock);
+    $("detailDeleteBtn")?.addEventListener("click", deleteSelectedUser);
+    $("closeModalBtn")?.addEventListener("click", closeUserForm);
+    $("cancelBtn")?.addEventListener("click", closeUserForm);
+    $("confirmUserBtn")?.addEventListener("click", saveUser);
+    $("showPasswordBtn")?.addEventListener("click", () => {
+        const input = $("userPasswordInput");
+        input.type =
+            input.type === "password"
+                ? "text"
+                : "password";
+    });
+    $("detailPasswordEye")?.addEventListener("click", () => {
+        passwordVisible = !passwordVisible;
+        renderDetailPassword();
+    });
+    $("confirmCancel")?.addEventListener("click", closeConfirm);
+    document.querySelectorAll(".tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+            switchFile(tab.dataset.file);
+        });
+    });
+    document.addEventListener("keydown", e => {
+        if (
+            (e.metaKey || e.ctrlKey) &&
+            e.key.toLowerCase() === "k"
+        ) {
+            e.preventDefault();
+            $("searchInput")?.focus();
+        }
+        if (e.key === "Escape") {
+            closeDetail();
+            closeUserForm();
+            closeConfirm();
+        }
+    });
 }
-
-function getCurrentData() {
-    return backendFiles[currentFile]?.data || {};
+async function checkLogin() {
+    try {
+        const response = await fetch(API.get, {
+            credentials: "include"
+        });
+        if (response.status === 401) {
+            showLogin();
+            return;
+        }
+        if (!response.ok) {
+            showLogin();
+            return;
+        }
+        hideLogin();
+        await loadData();
+    } catch {
+        showLogin();
+    }
 }
-
-function getUsersObject() {
-    const data = getCurrentData();
-
-    if (!data.users || typeof data.users !== "object") {
+async function login() {
+    const password = $("adminPassword").value.trim();
+    const status = $("loginStatus");
+    if (!password) {
+        status.textContent = "Enter admin password.";
+        status.className = "login-status error";
+        return;
+    }
+    $("loginBtn").disabled = true;
+    status.textContent = "Checking...";
+    status.className = "login-status";
+    try {
+        const response = await fetch("/api/admin-login", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ password })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(
+                data.error || "Invalid password"
+            );
+        }
+        hideLogin();
+        await loadData();
+    } catch (error) {
+        status.textContent = error.message;
+        status.className = "login-status error";
+    } finally {
+        $("loginBtn").disabled = false;
+    }
+}
+function logout() {
+    fetch("/api/admin-logout", {
+        method: "POST",
+        credentials: "include"
+    }).finally(() => {
+        location.reload();
+    });
+}
+function showLogin() {
+    $("adminLogin")?.classList.remove("hidden");
+    $("app")?.classList.add("hidden");
+}
+function hideLogin() {
+    $("adminLogin")?.classList.add("hidden");
+    $("app")?.classList.remove("hidden");
+}
+async function loadData() {
+    setMessage("Loading backend data...", "");
+    $("backendStatus").textContent = "Loading";
+    try {
+        const response = await fetch(API.get, {
+            credentials: "include",
+            cache: "no-store"
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(
+                result.error || "Unable to load backend"
+            );
+        }
+        files = result.files || {};
+        if (!files.qxControl) {
+            throw new Error(
+                "QX Control backend file is not available"
+            );
+        }
+        $("backendStatus").textContent = "Connected";
+        $("headerStatus").textContent = "Online";
+        renderCurrentFile();
+        setMessage("Backend loaded successfully.", "success");
+        dirty = false;
+        updateSaveBar();
+    } catch (error) {
+        $("backendStatus").textContent = "Error";
+        $("headerStatus").textContent = "Offline";
+        setMessage(error.message, "error");
+    }
+}
+function switchFile(file) {
+    if (!files[file]) {
+        setMessage(
+            `${FILE_NAMES[file] || file} is not available.`,
+            "error"
+        );
+        return;
+    }
+    currentFile = file;
+    document.querySelectorAll(".tab").forEach(tab => {
+        tab.classList.toggle(
+            "active",
+            tab.dataset.file === file
+        );
+    });
+    $("currentFile").textContent =
+        FILE_NAMES[file] || file;
+    closeDetail();
+    renderCurrentFile();
+}
+function renderCurrentFile() {
+    const data = files[currentFile]?.data;
+    if (!data) return;
+    $("activeToggle").checked =
+        Boolean(data.active);
+    $("passwordToggle").checked =
+        Boolean(data.password_required);
+    $("activeToggle").onchange = () => {
+        data.active = $("activeToggle").checked;
+        markDirty();
+    };
+    $("passwordToggle").onchange = () => {
+        data.password_required =
+            $("passwordToggle").checked;
+        markDirty();
+    };
+    renderUsers();
+    renderBlocked();
+    updateStats();
+}
+function getUsers() {
+    const data = files[currentFile]?.data;
+    if (!data) return {};
+    if (
+        !data.users ||
+        typeof data.users !== "object"
+    ) {
         data.users = {};
     }
-
     return data.users;
 }
-
-function getBlockedArray() {
-    const data = getCurrentData();
-
+function getBlocked() {
+    const data = files[currentFile]?.data;
+    if (!data) return [];
     if (!Array.isArray(data.blocked)) {
         data.blocked = [];
     }
-
     return data.blocked;
 }
-
-function isBlocked(uid) {
-    return getBlockedArray().includes(uid);
-}
-
-function markDirty() {
-    dirty = true;
-
-    document.body.classList.add("has-unsaved");
-
-    const saveBar = document.querySelector(".save-bar");
-
-    if (saveBar) {
-        saveBar.classList.add("dirty");
-    }
-}
-
-function markClean() {
-    dirty = false;
-
-    document.body.classList.remove("has-unsaved");
-
-    const saveBar = document.querySelector(".save-bar");
-
-    if (saveBar) {
-        saveBar.classList.remove("dirty");
-    }
-}
-
-function showMessage(text, type = "success") {
-    const el = $("message");
-
-    if (!el) return;
-
-    el.textContent = text;
-
-    el.className =
-        `message ${type}`;
-
-    clearTimeout(showMessage.timer);
-
-    showMessage.timer = setTimeout(() => {
-        el.textContent = "";
-        el.className = "message";
-    }, 4500);
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| LOGIN
-|--------------------------------------------------------------------------
-*/
-
-async function login() {
-    const password =
-        $("adminPassword").value.trim();
-
-    const status =
-        $("loginStatus");
-
-    const button =
-        $("loginBtn");
-
-    if (!password) {
-        status.textContent =
-            "Please enter admin password.";
-
-        status.className =
-            "login-status error";
-
-        return;
-    }
-
-    button.disabled = true;
-
-    status.textContent =
-        "Authenticating...";
-
-    status.className =
-        "login-status loading";
-
-    try {
-        const response =
-            await fetch(
-                API.login,
-                {
-                    method: "POST",
-                    credentials: "include",
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    body: JSON.stringify({
-                        password
-                    })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.success) {
-            throw new Error(
-                data.error ||
-                "Login failed"
-            );
-        }
-
-        $("adminLogin")
-            .classList.add("hidden");
-
-        $("app")
-            .classList.remove("hidden");
-
-        status.textContent = "";
-
-        await loadBackends();
-
-    } catch (error) {
-
-        status.textContent =
-            error.message ||
-            "Login failed.";
-
-        status.className =
-            "login-status error";
-
-    } finally {
-        button.disabled = false;
-    }
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| LOGOUT
-|--------------------------------------------------------------------------
-*/
-
-async function logout() {
-    try {
-        await fetch(
-            API.logout,
-            {
-                method: "POST",
-                credentials: "include"
-            }
-        );
-    } catch {}
-
-    location.reload();
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| LOAD BACKENDS
-|--------------------------------------------------------------------------
-*/
-
-async function loadBackends() {
-    setBackendStatus("Loading");
-
-    try {
-        const response =
-            await fetch(
-                API.getData,
-                {
-                    method: "GET",
-                    credentials: "include",
-                    cache: "no-store"
-                }
-            );
-
-        const result =
-            await response.json();
-
-        if (
-            response.status === 401
-        ) {
-            location.reload();
-            return;
-        }
-
-        if (
-            !response.ok ||
-            !result.success
-        ) {
-            throw new Error(
-                result.error ||
-                "Unable to load backend"
-            );
-        }
-
-        backendFiles =
-            result.files || {};
-
-        setBackendStatus("Connected");
-
-        renderCurrentFile();
-
-        markClean();
-
-        showMessage(
-            "Backend data loaded successfully."
-        );
-
-    } catch (error) {
-
-        setBackendStatus("Offline");
-
-        showMessage(
-            error.message ||
-            "Unable to load backend.",
-            "error"
-        );
-    }
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| BACKEND STATUS
-|--------------------------------------------------------------------------
-*/
-
-function setBackendStatus(status) {
-    const el =
-        $("backendStatus");
-
-    const header =
-        $("headerStatus");
-
-    if (!el) return;
-
-    el.textContent =
-        status;
-
-    if (header) {
-        header.textContent =
-            status === "Connected"
-                ? "Online"
-                : status;
-    }
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| TAB SWITCH
-|--------------------------------------------------------------------------
-*/
-
-function switchFile(file) {
-    if (!backendFiles[file]) {
-        showMessage(
-            "This backend file is not available.",
-            "error"
-        );
-        return;
-    }
-
-    if (dirty) {
-        const leave =
-            confirm(
-                "You have unsaved changes. Switch anyway?"
-            );
-
-        if (!leave) return;
-    }
-
-    currentFile = file;
-
-    document
-        .querySelectorAll(".tab")
-        .forEach(tab => {
-            tab.classList.toggle(
-                "active",
-                tab.dataset.file === file
-            );
-        });
-
-    renderCurrentFile();
-
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| RENDER CURRENT FILE
-|--------------------------------------------------------------------------
-*/
-
-function renderCurrentFile() {
-    const file =
-        backendFiles[currentFile];
-
-    if (!file) return;
-
-    $("currentFile").textContent =
-        FILE_NAMES[currentFile] ||
-        file.path ||
-        "backend.json";
-
-    const data =
-        file.data || {};
-
-    $("activeToggle").checked =
-        data.active === true;
-
-    $("passwordToggle").checked =
-        data.password_required === true;
-
-    renderUsers();
-
-    renderBlocked();
-
-    updateStats();
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| USER CARDS
-|--------------------------------------------------------------------------
-*/
-
 function renderUsers() {
-    const grid =
-        $("usersGrid");
-
-    const empty =
-        $("emptyUsers");
-
+    const grid = $("usersGrid");
+    const empty = $("emptyUsers");
+    if (!grid) return;
+    const users = getUsers();
     const search =
-        $("searchInput")
-            .value
+        ($("searchInput")?.value || "")
             .trim()
             .toLowerCase();
-
-    const users =
-        getUsersObject();
-
-    const entries =
-        Object.entries(users)
+    const entries = Object.entries(users)
         .filter(([uid, user]) => {
-
-            const name =
-                user?.name || "";
-
+            if (!search) return true;
             return (
-                uid.toLowerCase()
-                    .includes(search) ||
-                name.toLowerCase()
+                uid.toLowerCase().includes(search) ||
+                String(user.name || "")
+                    .toLowerCase()
                     .includes(search)
             );
         });
-
-    grid.innerHTML = "";
-
-    $("visibleUserCount")
-        .textContent =
+    $("visibleUserCount").textContent =
         entries.length;
-
+    grid.innerHTML = "";
     if (!entries.length) {
-        empty.classList.remove("hidden");
+        empty?.classList.remove("hidden");
         return;
     }
-
-    empty.classList.add("hidden");
-
-    entries.forEach(
-        ([uid, user]) => {
-
-            const blocked =
-                isBlocked(uid);
-
-            const name =
-                user?.name || "Unnamed User";
-
-            const initial =
-                name
-                    .charAt(0)
-                    .toUpperCase();
-
-            const card =
-                document.createElement("button");
-
-            card.type = "button";
-
-            card.className =
-                `user-card ${blocked ? "is-blocked" : ""}`;
-
-            card.innerHTML = `
-                <div class="user-card-top">
-
-                    <div class="user-avatar">
-                        ${escapeHTML(initial)}
-                    </div>
-
-                    <div class="user-main-info">
-
-                        <strong>
-                            ${escapeHTML(name)}
-                        </strong>
-
-                        <span>
-                            ${escapeHTML(uid)}
-                        </span>
-
-                    </div>
-
-                    <div class="user-status-dot ${blocked ? "blocked" : ""}">
-                        ${blocked ? "⊘" : "✓"}
-                    </div>
-
+    empty?.classList.add("hidden");
+    entries.forEach(([uid, user]) => {
+        const blocked =
+            getBlocked().includes(uid);
+        const card =
+            document.createElement("button");
+        card.type = "button";
+        card.className =
+            `user-card ${blocked ? "is-blocked" : ""}`;
+        const name =
+            escapeHTML(user.name || "Unnamed User");
+        const initials =
+            getInitials(user.name || uid);
+        card.innerHTML = `
+            <div class="user-card-top">
+                <div class="user-avatar">
+                    ${escapeHTML(initials)}
                 </div>
-
-                <div class="user-card-bottom">
-
-                    <span class="mini-label">
-                        ${blocked ? "BLOCKED" : "ACTIVE"}
-                    </span>
-
-                    <span class="open-card">
-                        View details →
-                    </span>
-
+                <div class="user-status ${blocked ? "blocked" : "active"}">
+                    <span></span>
+                    ${blocked ? "BLOCKED" : "ACTIVE"}
                 </div>
-            `;
-
-            card.addEventListener(
-                "click",
-                () => openUserDetails(uid)
-            );
-
-            grid.appendChild(card);
-        }
-    );
+            </div>
+            <div class="user-name">
+                ${name}
+            </div>
+            <div class="user-uid">
+                ${escapeHTML(uid)}
+            </div>
+            <div class="user-card-bottom">
+                <span>
+                    ${blocked ? "Access restricted" : "Access allowed"}
+                </span>
+                <b>→</b>
+            </div>
+        `;
+        card.addEventListener("click", () => {
+            openDetail(uid);
+        });
+        grid.appendChild(card);
+    });
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| USER DETAILS
-|--------------------------------------------------------------------------
-*/
-
-function openUserDetails(uid) {
-    const users =
-        getUsersObject();
-
-    const user =
-        users[uid];
-
+function openDetail(uid) {
+    const user = getUsers()[uid];
     if (!user) return;
-
-    selectedUserUID =
-        uid;
-
-    const blocked =
-        isBlocked(uid);
-
-    const name =
+    selectedUID = uid;
+    passwordVisible = false;
+    $("detailAvatar").textContent =
+        getInitials(user.name || uid);
+    $("detailName").textContent =
         user.name || "Unnamed User";
-
-    $("detailAvatar")
-        .textContent =
-        name.charAt(0)
-            .toUpperCase();
-
-    $("detailName")
-        .textContent =
-        name;
-
-    $("detailUID")
-        .textContent =
+    $("detailUID").textContent = uid;
+    $("detailNameValue").textContent =
+        user.name || "—";
+    $("detailUIDValue").textContent =
         uid;
-
-    $("detailNameValue")
-        .textContent =
-        name;
-
-    $("detailUIDValue")
-        .textContent =
-        uid;
-
-    $("detailPassword")
-        .textContent =
-        "••••••••";
-
-    $("detailPassword")
-        .dataset.password =
-        user.password || "";
-
-    $("detailAccess")
-        .textContent =
-        blocked
+    $("detailAccess").textContent =
+        getBlocked().includes(uid)
             ? "Blocked"
             : "Active";
-
-    const status =
-        $("detailStatus");
-
-    status.className =
-        `profile-status ${blocked ? "blocked" : ""}`;
-
-    status.innerHTML =
-        `<span></span>${blocked ? "BLOCKED" : "ACTIVE"}`;
-
-    $("detailBlockBtn")
-        .textContent =
-        blocked
+    $("detailStatus").innerHTML =
+        getBlocked().includes(uid)
+            ? "<span></span> BLOCKED"
+            : "<span></span> ACTIVE";
+    $("detailStatus").className =
+        `profile-status ${
+            getBlocked().includes(uid)
+                ? "blocked"
+                : "active"
+        }`;
+    renderDetailPassword();
+    const blockBtn = $("detailBlockBtn");
+    blockBtn.textContent =
+        getBlocked().includes(uid)
             ? "✓ Unblock User"
             : "⊘ Block User";
-
-    $("userDetailModal")
-        .classList.remove("hidden");
+    $("userDetailModal").classList.remove("hidden");
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| CLOSE DETAIL
-|--------------------------------------------------------------------------
-*/
-
-function closeDetails() {
-    $("userDetailModal")
-        .classList.add("hidden");
-
-    selectedUserUID = null;
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| ADD USER
-|--------------------------------------------------------------------------
-*/
-
-function openAddUser() {
-    editingUID = null;
-
-    $("modalBadge")
-        .textContent =
-        "NEW USER";
-
-    $("modalTitle")
-        .textContent =
-        "Add User";
-
-    $("uidInput").value = "";
-    $("nameInput").value = "";
-    $("userPasswordInput").value = "";
-
-    $("uidInput").disabled = false;
-
-    $("userModal")
-        .classList.remove("hidden");
-
-    setTimeout(
-        () => $("uidInput").focus(),
-        100
-    );
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| EDIT USER
-|--------------------------------------------------------------------------
-*/
-
-function openEditUser() {
-    if (!selectedUserUID) return;
-
-    const users =
-        getUsersObject();
-
-    const user =
-        users[selectedUserUID];
-
+function renderDetailPassword() {
+    if (!selectedUID) return;
+    const user = getUsers()[selectedUID];
     if (!user) return;
-
-    editingUID =
-        selectedUserUID;
-
-    $("modalBadge")
-        .textContent =
-        "EDIT USER";
-
-    $("modalTitle")
-        .textContent =
-        "Edit User";
-
-    $("uidInput").value =
-        selectedUserUID;
-
-    $("nameInput").value =
-        user.name || "";
-
-    $("userPasswordInput").value =
-        user.password || "";
-
-    $("uidInput").disabled = false;
-
-    $("userDetailModal")
-        .classList.add("hidden");
-
-    $("userModal")
-        .classList.remove("hidden");
-
-    $("nameInput").focus();
+    $("detailPassword").textContent =
+        passwordVisible
+            ? (user.password || "—")
+            : "••••••••";
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| SAVE USER LOCALLY
-|--------------------------------------------------------------------------
-*/
-
+function closeDetail() {
+    $("userDetailModal")?.classList.add("hidden");
+    selectedUID = null;
+}
+function openUserForm(uid = null) {
+    editingUID = uid;
+    $("modalBadge").textContent =
+        uid ? "EDIT USER" : "NEW USER";
+    $("modalTitle").textContent =
+        uid ? "Edit User" : "Add User";
+    if (uid) {
+        const user = getUsers()[uid];
+        $("uidInput").value = uid;
+        $("nameInput").value = user?.name || "";
+        $("userPasswordInput").value =
+            user?.password || "";
+    } else {
+        $("uidInput").value = "";
+        $("nameInput").value = "";
+        $("userPasswordInput").value = "";
+    }
+    $("userModal").classList.remove("hidden");
+}
+function closeUserForm() {
+    $("userModal")?.classList.add("hidden");
+    editingUID = null;
+}
 function saveUser() {
     const uid =
-        $("uidInput")
-            .value
-            .trim();
-
+        $("uidInput").value.trim();
     const name =
-        $("nameInput")
-            .value
-            .trim();
-
+        $("nameInput").value.trim();
     const password =
-        $("userPasswordInput")
-            .value;
-
+        $("userPasswordInput").value;
     if (!uid) {
-        showMessage(
-            "UID is required.",
-            "error"
-        );
+        alert("UID is required.");
         return;
     }
-
     if (!name) {
-        showMessage(
-            "User name is required.",
-            "error"
-        );
+        alert("User name is required.");
         return;
     }
-
     if (!password) {
-        showMessage(
-            "Password is required.",
-            "error"
-        );
+        alert("Password is required.");
         return;
     }
-
-    const users =
-        getUsersObject();
-
-    const oldUID =
-        editingUID;
-
+    const users = getUsers();
     if (
-        !oldUID &&
+        !editingUID &&
         users[uid]
     ) {
-        showMessage(
-            "This UID already exists.",
-            "error"
-        );
+        alert("This UID already exists.");
         return;
     }
-
     if (
-        oldUID &&
-        oldUID !== uid &&
-        users[uid]
+        editingUID &&
+        editingUID !== uid
     ) {
-        showMessage(
-            "New UID already exists.",
-            "error"
-        );
-        return;
-    }
-
-    if (
-        oldUID &&
-        oldUID !== uid
-    ) {
-        users[uid] = {
-            name,
-            password
-        };
-
-        delete users[oldUID];
-
+        delete users[editingUID];
         const blocked =
-            getBlockedArray();
-
+            getBlocked();
         const index =
-            blocked.indexOf(oldUID);
-
+            blocked.indexOf(editingUID);
         if (index !== -1) {
             blocked[index] = uid;
         }
-
-    } else {
-        users[uid] = {
-            name,
-            password
-        };
     }
-
+    users[uid] = {
+        name,
+        password
+    };
     markDirty();
-
-    closeUserModal();
-
+    closeUserForm();
     renderCurrentFile();
-
-    showMessage(
-        oldUID
-            ? "User updated."
-            : "User added."
+    openDetail(uid);
+    setMessage(
+        "User changes are ready to save.",
+        "success"
     );
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| DELETE
-|--------------------------------------------------------------------------
-*/
-
-function deleteSelectedUser() {
-    if (!selectedUserUID) return;
-
-    const uid =
-        selectedUserUID;
-
-    askConfirm(
-        "Delete User",
-        `Delete ${uid}? This cannot be undone.`,
-        "🗑",
-        () => {
-
-            const users =
-                getUsersObject();
-
-            delete users[uid];
-
-            const blocked =
-                getBlockedArray();
-
-            const index =
-                blocked.indexOf(uid);
-
-            if (index !== -1) {
-                blocked.splice(index, 1);
-            }
-
-            closeDetails();
-
-            markDirty();
-
-            renderCurrentFile();
-
-            showMessage(
-                "User deleted."
-            );
-        }
-    );
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| BLOCK / UNBLOCK
-|--------------------------------------------------------------------------
-*/
-
 function toggleSelectedBlock() {
-    if (!selectedUserUID) return;
-
-    const uid =
-        selectedUserUID;
-
-    const blocked =
-        getBlockedArray();
-
+    if (!selectedUID) return;
+    const blocked = getBlocked();
     const index =
-        blocked.indexOf(uid);
-
+        blocked.indexOf(selectedUID);
     if (index === -1) {
-        blocked.push(uid);
-        showMessage(
-            "User blocked."
-        );
+        blocked.push(selectedUID);
     } else {
         blocked.splice(index, 1);
-        showMessage(
-            "User unblocked."
-        );
     }
-
     markDirty();
-
-    openUserDetails(uid);
-
+    openDetail(selectedUID);
     renderUsers();
     renderBlocked();
     updateStats();
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| BLOCKED LIST
-|--------------------------------------------------------------------------
-*/
-
+function deleteSelectedUser() {
+    if (!selectedUID) return;
+    const uid = selectedUID;
+    if (
+        !confirm(
+            `Delete ${uid} from this backend?`
+        )
+    ) {
+        return;
+    }
+    const users = getUsers();
+    delete users[uid];
+    const blocked = getBlocked();
+    const index = blocked.indexOf(uid);
+    if (index !== -1) {
+        blocked.splice(index, 1);
+    }
+    closeDetail();
+    markDirty();
+    renderCurrentFile();
+    setMessage(
+        "User deleted locally. Save to GitHub to apply.",
+        "success"
+    );
+}
 function renderBlocked() {
-    const list =
-        $("blockedList");
-
-    const blocked =
-        getBlockedArray();
-
-    const users =
-        getUsersObject();
-
-    $("blockedCount")
-        .textContent =
+    const list = $("blockedList");
+    if (!list) return;
+    const blocked = getBlocked();
+    $("blockedCount").textContent =
         blocked.length;
-
     list.innerHTML = "";
-
     if (!blocked.length) {
         list.innerHTML = `
             <div class="blocked-empty">
@@ -935,578 +491,167 @@ function renderBlocked() {
         `;
         return;
     }
-
     blocked.forEach(uid => {
-
-        const user =
-            users[uid];
-
-        const name =
-            user?.name ||
-            "Unknown User";
-
+        const user = getUsers()[uid];
         const item =
             document.createElement("div");
-
-        item.className =
-            "blocked-item";
-
+        item.className = "blocked-item";
         item.innerHTML = `
             <div>
                 <strong>
-                    ${escapeHTML(name)}
+                    ${escapeHTML(user?.name || "Unknown User")}
                 </strong>
-
                 <span>
                     ${escapeHTML(uid)}
                 </span>
             </div>
-
-            <button
-                type="button"
-                data-uid="${escapeHTML(uid)}"
-            >
+            <button type="button">
                 Unblock
             </button>
         `;
-
-        item
-            .querySelector("button")
-            .addEventListener(
-                "click",
-                () => {
-
-                    const index =
-                        getBlockedArray()
-                            .indexOf(uid);
-
-                    if (index !== -1) {
-                        getBlockedArray()
-                            .splice(index, 1);
-                    }
-
-                    markDirty();
-
-                    renderCurrentFile();
-
-                    showMessage(
-                        "User unblocked."
-                    );
+        item.querySelector("button")
+            .addEventListener("click", () => {
+                const index =
+                    getBlocked().indexOf(uid);
+                if (index !== -1) {
+                    getBlocked().splice(index, 1);
                 }
-            );
-
+                markDirty();
+                renderCurrentFile();
+            });
         list.appendChild(item);
     });
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| STATS
-|--------------------------------------------------------------------------
-*/
-
 function updateStats() {
     const users =
-        getUsersObject();
-
+        Object.keys(getUsers());
     const blocked =
-        getBlockedArray();
-
-    const total =
-        Object.keys(users).length;
-
-    $("totalUsers")
-        .textContent =
-        total;
-
-    $("blockedUsers")
-        .textContent =
+        getBlocked();
+    $("totalUsers").textContent =
+        users.length;
+    $("blockedUsers").textContent =
         blocked.length;
-
-    $("activeUsers")
-        .textContent =
+    $("activeUsers").textContent =
         Math.max(
             0,
-            total - blocked.length
+            users.length -
+            blocked.filter(uid => users.includes(uid)).length
         );
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| SAVE TO GITHUB
-|--------------------------------------------------------------------------
-*/
-
-async function saveToGitHub() {
-    const file =
-        backendFiles[currentFile];
-
-    if (!file) {
-        showMessage(
-            "No backend file selected.",
+async function saveCurrentFile() {
+    const saveBtn = $("saveBtn");
+    if (!files[currentFile]) {
+        setMessage(
+            "This backend file is not available.",
             "error"
         );
         return;
     }
-
-    const button =
-        $("saveBtn");
-
-    button.disabled = true;
-
-    button.innerHTML =
-        "<span>⏳</span> Saving...";
-
+    saveBtn.disabled = true;
+    const oldHTML = saveBtn.innerHTML;
+    saveBtn.innerHTML = "Saving...";
     try {
         const response =
-            await fetch(
-                API.saveData,
-                {
-                    method: "POST",
-                    credentials: "include",
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    body: JSON.stringify({
-                        file: currentFile,
-                        data: file.data
-                    })
-                }
-            );
-
+            await fetch(API.save, {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    file: currentFile,
+                    data: files[currentFile].data
+                })
+            });
         const result =
             await response.json();
-
-        if (response.status === 401) {
-            location.reload();
-            return;
-        }
-
-        if (
-            !response.ok ||
-            !result.success
-        ) {
+        if (!response.ok || !result.success) {
             throw new Error(
                 result.error ||
-                "Save failed"
+                "Unable to save backend"
             );
         }
-
-        markClean();
-
-        showMessage(
-            `${FILE_NAMES[currentFile]} saved successfully.`
+        dirty = false;
+        updateSaveBar();
+        setMessage(
+            `${FILE_NAMES[currentFile]} updated successfully.`,
+            "success"
         );
-
-        await loadBackends();
-
+        await loadData();
     } catch (error) {
-
-        showMessage(
-            error.message ||
-            "Unable to save.",
+        setMessage(
+            error.message,
             "error"
         );
-
     } finally {
-
-        button.disabled = false;
-
-        button.innerHTML =
-            "<span>☁</span> Save to GitHub";
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = oldHTML;
     }
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| CONFIRM MODAL
-|--------------------------------------------------------------------------
-*/
-
-function askConfirm(
-    title,
-    text,
-    icon,
-    callback
-) {
-    $("confirmIcon")
-        .textContent =
-        icon;
-
-    $("confirmTitle")
-        .textContent =
-        title;
-
-    $("confirmText")
-        .textContent =
-        text;
-
-    pendingConfirmAction =
-        callback;
-
-    $("confirmModal")
-        .classList.remove("hidden");
+function markDirty() {
+    dirty = true;
+    updateSaveBar();
 }
-
-function closeConfirm() {
-    pendingConfirmAction = null;
-
-    $("confirmModal")
-        .classList.add("hidden");
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| MODALS
-|--------------------------------------------------------------------------
-*/
-
-function closeUserModal() {
-    $("userModal")
-        .classList.add("hidden");
-
-    editingUID = null;
-}
-
-function closeAllModals() {
-    $("userModal")
-        .classList.add("hidden");
-
-    $("userDetailModal")
-        .classList.add("hidden");
-
-    $("confirmModal")
-        .classList.add("hidden");
-
-    editingUID = null;
-
-    selectedUserUID = null;
-
-    pendingConfirmAction = null;
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| PASSWORD VISIBILITY
-|--------------------------------------------------------------------------
-*/
-
-function toggleInputPassword() {
-    const input =
-        $("userPasswordInput");
-
-    input.type =
-        input.type === "password"
-            ? "text"
-            : "password";
-}
-
-function toggleDetailPassword() {
-    const el =
-        $("detailPassword");
-
-    if (
-        el.textContent ===
-        "••••••••"
-    ) {
-        el.textContent =
-            el.dataset.password ||
-            "—";
+function updateSaveBar() {
+    const bar =
+        document.querySelector(".save-bar");
+    if (!bar) return;
+    bar.classList.toggle(
+        "has-changes",
+        dirty
+    );
+    const title =
+        bar.querySelector("strong");
+    const subtitle =
+        bar.querySelector("span");
+    if (dirty) {
+        title.textContent =
+            "Unsaved changes";
+        subtitle.textContent =
+            "Save your changes to update GitHub.";
     } else {
-        el.textContent =
-            "••••••••";
+        title.textContent =
+            "Everything is saved";
+        subtitle.textContent =
+            "Your current backend is up to date.";
     }
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| KEYBOARD
-|--------------------------------------------------------------------------
-*/
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-        if (
-            (event.metaKey ||
-             event.ctrlKey) &&
-            event.key.toLowerCase() === "k"
-        ) {
-            event.preventDefault();
-
-            $("searchInput")
-                .focus();
-        }
-
-        if (
-            event.key === "Escape"
-        ) {
-            closeAllModals();
-        }
-
-        if (
-            event.key === "Enter" &&
-            document.activeElement ===
-            $("adminPassword")
-        ) {
-            login();
-        }
+function setMessage(text, type = "") {
+    const el = $("message");
+    if (!el) return;
+    el.textContent = text;
+    el.className =
+        `message ${type}`;
+    if (text) {
+        clearTimeout(setMessage.timer);
+        setMessage.timer =
+            setTimeout(() => {
+                el.textContent = "";
+            }, 5000);
     }
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| EVENTS
-|--------------------------------------------------------------------------
-*/
-
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-
-        $("loginBtn")
-            .addEventListener(
-                "click",
-                login
-            );
-
-        $("logoutBtn")
-            .addEventListener(
-                "click",
-                logout
-            );
-
-        $("refreshBtn")
-            .addEventListener(
-                "click",
-                loadBackends
-            );
-
-        $("loginEye")
-            .addEventListener(
-                "click",
-                () => {
-
-                    const input =
-                        $("adminPassword");
-
-                    input.type =
-                        input.type === "password"
-                            ? "text"
-                            : "password";
-                }
-            );
-
-        document
-            .querySelectorAll(".tab")
-            .forEach(tab => {
-
-                tab.addEventListener(
-                    "click",
-                    () => switchFile(
-                        tab.dataset.file
-                    )
-                );
-
-            });
-
-
-        $("activeToggle")
-            .addEventListener(
-                "change",
-                event => {
-
-                    getCurrentData()
-                        .active =
-                        event.target.checked;
-
-                    markDirty();
-                }
-            );
-
-
-        $("passwordToggle")
-            .addEventListener(
-                "change",
-                event => {
-
-                    getCurrentData()
-                        .password_required =
-                        event.target.checked;
-
-                    markDirty();
-                }
-            );
-
-
-        $("searchInput")
-            .addEventListener(
-                "input",
-                renderUsers
-            );
-
-
-        $("clearSearch")
-            .addEventListener(
-                "click",
-                () => {
-
-                    $("searchInput")
-                        .value = "";
-
-                    renderUsers();
-
-                    $("searchInput")
-                        .focus();
-                }
-            );
-
-
-        $("addUserBtn")
-            .addEventListener(
-                "click",
-                openAddUser
-            );
-
-
-        $("emptyAddBtn")
-            .addEventListener(
-                "click",
-                openAddUser
-            );
-
-
-        $("closeDetailBtn")
-            .addEventListener(
-                "click",
-                closeDetails
-            );
-
-
-        $("detailEditBtn")
-            .addEventListener(
-                "click",
-                openEditUser
-            );
-
-
-        $("detailBlockBtn")
-            .addEventListener(
-                "click",
-                toggleSelectedBlock
-            );
-
-
-        $("detailDeleteBtn")
-            .addEventListener(
-                "click",
-                deleteSelectedUser
-            );
-
-
-        $("detailPasswordEye")
-            .addEventListener(
-                "click",
-                toggleDetailPassword
-            );
-
-
-        $("showPasswordBtn")
-            .addEventListener(
-                "click",
-                toggleInputPassword
-            );
-
-
-        $("closeModalBtn")
-            .addEventListener(
-                "click",
-                closeUserModal
-            );
-
-
-        $("cancelBtn")
-            .addEventListener(
-                "click",
-                closeUserModal
-            );
-
-
-        $("confirmUserBtn")
-            .addEventListener(
-                "click",
-                saveUser
-            );
-
-
-        $("confirmCancel")
-            .addEventListener(
-                "click",
-                closeConfirm
-            );
-
-
-        $("confirmOk")
-            .addEventListener(
-                "click",
-                () => {
-
-                    if (
-                        typeof pendingConfirmAction ===
-                        "function"
-                    ) {
-                        const action =
-                            pendingConfirmAction;
-
-                        closeConfirm();
-
-                        action();
-                    }
-                }
-            );
-
-
-        $("saveBtn")
-            .addEventListener(
-                "click",
-                saveToGitHub
-            );
-
-
-        // Close modal on background click
-
-        [
-            "userDetailModal",
-            "userModal",
-            "confirmModal"
-        ].forEach(id => {
-
-            $(id).addEventListener(
-                "click",
-                event => {
-
-                    if (
-                        event.target ===
-                        $(id)
-                    ) {
-                        $(id)
-                            .classList
-                            .add("hidden");
-                    }
-
-                }
-            );
-
-        });
-
+}
+function getInitials(name) {
+    const words =
+        String(name)
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+    if (!words.length) return "U";
+    if (words.length === 1) {
+        return words[0]
+            .slice(0, 2)
+            .toUpperCase();
     }
-);
+    return (
+        words[0][0] +
+        words[words.length - 1][0]
+    ).toUpperCase();
+}
+function escapeHTML(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
