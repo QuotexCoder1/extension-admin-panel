@@ -12,10 +12,15 @@ let selectedUID = null;
 let searchText = "";
 let pendingAction = null;
 
-const fileNames = {
+const FILE_NAMES = {
+
     withdrawal: "Withdrawal.json",
+
     yns: "yns.json",
-    wns: "wns.json"
+
+    wns: "wns.json",
+
+    qxControl: "control1.json"
 };
 
 const $ = id => document.getElementById(id);
