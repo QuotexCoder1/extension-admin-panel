@@ -1,653 +1,1262 @@
-const API = {
-    get: "/api/get-data",
-    save: "/api/save-data"
-};
-const FILE_NAMES = {
-    withdrawal: "Withdrawal.json",
-    yns: "yns.json",
-    wns: "wns.json",
-    qxControl: "control1.json"
-};
+"use strict";
+
+/* =========================================================
+   EXTENSION CONTROL PANEL
+   Same backend system + premium user-card interface
+========================================================= */
+
 let files = {};
 let currentFile = "withdrawal";
-let selectedUID = null;
 let editingUID = null;
-let passwordVisible = false;
-let dirty = false;
+let selectedUID = null;
+let searchText = "";
+let pendingAction = null;
+
+const fileNames = {
+    withdrawal: "Withdrawal.json",
+    yns: "yns.json",
+    wns: "wns.json"
+};
+
 const $ = id => document.getElementById(id);
-document.addEventListener("DOMContentLoaded", () => {
-    bindEvents();
-    checkLogin();
-});
-function bindEvents() {
-    $("loginBtn")?.addEventListener("click", login);
-    $("adminPassword")?.addEventListener("keydown", e => {
-        if (e.key === "Enter") login();
-    });
-    $("loginEye")?.addEventListener("click", () => {
-        const input = $("adminPassword");
-        input.type = input.type === "password"
-            ? "text"
-            : "password";
-    });
-    $("logoutBtn")?.addEventListener("click", logout);
-    $("refreshBtn")?.addEventListener("click", loadData);
-    $("saveBtn")?.addEventListener("click", saveCurrentFile);
-    $("searchInput")?.addEventListener("input", renderUsers);
-    $("clearSearch")?.addEventListener("click", () => {
-        $("searchInput").value = "";
-        renderUsers();
-    });
-    $("addUserBtn")?.addEventListener("click", () => openUserForm());
-    $("emptyAddBtn")?.addEventListener("click", () => openUserForm());
-    $("closeDetailBtn")?.addEventListener("click", closeDetail);
-    $("detailEditBtn")?.addEventListener("click", () => {
-        if (selectedUID) openUserForm(selectedUID);
-    });
-    $("detailBlockBtn")?.addEventListener("click", toggleSelectedBlock);
-    $("detailDeleteBtn")?.addEventListener("click", deleteSelectedUser);
-    $("closeModalBtn")?.addEventListener("click", closeUserForm);
-    $("cancelBtn")?.addEventListener("click", closeUserForm);
-    $("confirmUserBtn")?.addEventListener("click", saveUser);
-    $("showPasswordBtn")?.addEventListener("click", () => {
-        const input = $("userPasswordInput");
-        input.type =
-            input.type === "password"
-                ? "text"
-                : "password";
-    });
-    $("detailPasswordEye")?.addEventListener("click", () => {
-        passwordVisible = !passwordVisible;
-        renderDetailPassword();
-    });
-    $("confirmCancel")?.addEventListener("click", closeConfirm);
-    document.querySelectorAll(".tab").forEach(tab => {
-        tab.addEventListener("click", () => {
-            switchFile(tab.dataset.file);
-        });
-    });
-    document.addEventListener("keydown", e => {
-        if (
-            (e.metaKey || e.ctrlKey) &&
-            e.key.toLowerCase() === "k"
-        ) {
-            e.preventDefault();
-            $("searchInput")?.focus();
-        }
-        if (e.key === "Escape") {
-            closeDetail();
-            closeUserForm();
-            closeConfirm();
-        }
-    });
+
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+const adminLogin = $("adminLogin");
+const adminPassword = $("adminPassword");
+const loginBtn = $("loginBtn");
+const loginStatus = $("loginStatus");
+const loginEye = $("loginEye");
+const app = $("app");
+
+function setLoginStatus(text, type = "") {
+    loginStatus.textContent = text;
+    loginStatus.className = "login-status " + type;
 }
-async function checkLogin() {
-    try {
-        const response = await fetch(API.get, {
-            credentials: "include"
-        });
-        if (response.status === 401) {
-            showLogin();
-            return;
-        }
-        if (!response.ok) {
-            showLogin();
-            return;
-        }
-        hideLogin();
-        await loadData();
-    } catch {
-        showLogin();
-    }
+
+function unlockDashboard() {
+    adminLogin.classList.add("hidden");
+    app.classList.remove("hidden");
+
+    sessionStorage.setItem("admin_logged_in", "1");
+
+    loadData();
 }
-async function login() {
-    const password = $("adminPassword").value.trim();
-    const status = $("loginStatus");
+
+function lockDashboard() {
+    sessionStorage.removeItem("admin_logged_in");
+
+    app.classList.add("hidden");
+    adminLogin.classList.remove("hidden");
+
+    adminPassword.value = "";
+    setLoginStatus("");
+
+    setTimeout(() => {
+        adminPassword.focus();
+    }, 100);
+}
+
+function login() {
+
+    const password = adminPassword.value.trim();
+
     if (!password) {
-        status.textContent = "Enter admin password.";
-        status.className = "login-status error";
+        setLoginStatus("Enter admin password.", "error");
+        adminPassword.focus();
         return;
     }
-    $("loginBtn").disabled = true;
-    status.textContent = "Checking...";
-    status.className = "login-status";
-    try {
-        const response = await fetch("/api/admin-login", {
-            method: "POST",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ password })
-        });
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-            throw new Error(
-                data.error || "Invalid password"
-            );
+
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = "<span>Checking...</span>";
+
+    setTimeout(() => {
+
+        /*
+         * Admin password requested by user:
+         * 9
+         */
+
+        if (password === "9") {
+
+            setLoginStatus("✓ Access granted", "success");
+
+            setTimeout(() => {
+                unlockDashboard();
+            }, 350);
+
+        } else {
+
+            setLoginStatus("✕ Incorrect password", "error");
+
+            adminPassword.value = "";
+            adminPassword.focus();
+
+            loginBtn.disabled = false;
+            loginBtn.innerHTML =
+                "<span>Login to Dashboard</span><b>→</b>";
         }
-        hideLogin();
-        await loadData();
-    } catch (error) {
-        status.textContent = error.message;
-        status.className = "login-status error";
-    } finally {
-        $("loginBtn").disabled = false;
+
+    }, 350);
+}
+
+loginBtn.onclick = login;
+
+adminPassword.onkeydown = event => {
+    if (event.key === "Enter") {
+        login();
     }
+};
+
+loginEye.onclick = () => {
+
+    if (adminPassword.type === "password") {
+        adminPassword.type = "text";
+        loginEye.textContent = "🙈";
+    } else {
+        adminPassword.type = "password";
+        loginEye.textContent = "👁";
+    }
+
+    adminPassword.focus();
+};
+
+$("logoutBtn").onclick = lockDashboard;
+
+
+/* =========================================================
+   INITIAL LOGIN CHECK
+========================================================= */
+
+if (sessionStorage.getItem("admin_logged_in") === "1") {
+    adminLogin.classList.add("hidden");
+    app.classList.remove("hidden");
+    loadData();
+} else {
+    setTimeout(() => adminPassword.focus(), 200);
 }
-function logout() {
-    fetch("/api/admin-logout", {
-        method: "POST",
-        credentials: "include"
-    }).finally(() => {
-        location.reload();
-    });
+
+
+/* =========================================================
+   MESSAGE
+========================================================= */
+
+let messageTimer;
+
+function showMessage(text, type = "") {
+
+    const box = $("message");
+
+    clearTimeout(messageTimer);
+
+    box.textContent = text;
+    box.className = "message " + type;
+
+    messageTimer = setTimeout(() => {
+        box.textContent = "";
+        box.className = "message";
+    }, 4500);
 }
-function showLogin() {
-    $("adminLogin")?.classList.remove("hidden");
-    $("app")?.classList.add("hidden");
-}
-function hideLogin() {
-    $("adminLogin")?.classList.add("hidden");
-    $("app")?.classList.remove("hidden");
-}
+
+
+/* =========================================================
+   LOAD DATA
+========================================================= */
+
 async function loadData() {
-    setMessage("Loading backend data...", "");
+
     $("backendStatus").textContent = "Loading";
+    $("headerStatus").textContent = "Syncing";
+
     try {
-        const response = await fetch(API.get, {
-            credentials: "include",
-            cache: "no-store"
-        });
+
+        const response = await fetch(
+            "/api/get-data",
+            {
+                cache: "no-store"
+            }
+        );
+
         const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(
-                result.error || "Unable to load backend"
-            );
-        }
-        files = result.files || {};
-        if (!files.qxControl) {
-            throw new Error(
-                "QX Control backend file is not available"
-            );
-        }
-        $("backendStatus").textContent = "Connected";
-        $("headerStatus").textContent = "Online";
-        renderCurrentFile();
-        setMessage("Backend loaded successfully.", "success");
-        dirty = false;
-        updateSaveBar();
-    } catch (error) {
-        $("backendStatus").textContent = "Error";
-        $("headerStatus").textContent = "Offline";
-        setMessage(error.message, "error");
-    }
-}
-function switchFile(file) {
-    if (!files[file]) {
-        setMessage(
-            `${FILE_NAMES[file] || file} is not available.`,
-            "error"
-        );
-        return;
-    }
-    currentFile = file;
-    document.querySelectorAll(".tab").forEach(tab => {
-        tab.classList.toggle(
-            "active",
-            tab.dataset.file === file
-        );
-    });
-    $("currentFile").textContent =
-        FILE_NAMES[file] || file;
-    closeDetail();
-    renderCurrentFile();
-}
-function renderCurrentFile() {
-    const data = files[currentFile]?.data;
-    if (!data) return;
-    $("activeToggle").checked =
-        Boolean(data.active);
-    $("passwordToggle").checked =
-        Boolean(data.password_required);
-    $("activeToggle").onchange = () => {
-        data.active = $("activeToggle").checked;
-        markDirty();
-    };
-    $("passwordToggle").onchange = () => {
-        data.password_required =
-            $("passwordToggle").checked;
-        markDirty();
-    };
-    renderUsers();
-    renderBlocked();
-    updateStats();
-}
-function getUsers() {
-    const data = files[currentFile]?.data;
-    if (!data) return {};
-    if (
-        !data.users ||
-        typeof data.users !== "object"
-    ) {
-        data.users = {};
-    }
-    return data.users;
-}
-function getBlocked() {
-    const data = files[currentFile]?.data;
-    if (!data) return [];
-    if (!Array.isArray(data.blocked)) {
-        data.blocked = [];
-    }
-    return data.blocked;
-}
-function renderUsers() {
-    const grid = $("usersGrid");
-    const empty = $("emptyUsers");
-    if (!grid) return;
-    const users = getUsers();
-    const search =
-        ($("searchInput")?.value || "")
-            .trim()
-            .toLowerCase();
-    const entries = Object.entries(users)
-        .filter(([uid, user]) => {
-            if (!search) return true;
-            return (
-                uid.toLowerCase().includes(search) ||
-                String(user.name || "")
-                    .toLowerCase()
-                    .includes(search)
-            );
-        });
-    $("visibleUserCount").textContent =
-        entries.length;
-    grid.innerHTML = "";
-    if (!entries.length) {
-        empty?.classList.remove("hidden");
-        return;
-    }
-    empty?.classList.add("hidden");
-    entries.forEach(([uid, user]) => {
-        const blocked =
-            getBlocked().includes(uid);
-        const card =
-            document.createElement("button");
-        card.type = "button";
-        card.className =
-            `user-card ${blocked ? "is-blocked" : ""}`;
-        const name =
-            escapeHTML(user.name || "Unnamed User");
-        const initials =
-            getInitials(user.name || uid);
-        card.innerHTML = `
-            <div class="user-card-top">
-                <div class="user-avatar">
-                    ${escapeHTML(initials)}
-                </div>
-                <div class="user-status ${blocked ? "blocked" : "active"}">
-                    <span></span>
-                    ${blocked ? "BLOCKED" : "ACTIVE"}
-                </div>
-            </div>
-            <div class="user-name">
-                ${name}
-            </div>
-            <div class="user-uid">
-                ${escapeHTML(uid)}
-            </div>
-            <div class="user-card-bottom">
-                <span>
-                    ${blocked ? "Access restricted" : "Access allowed"}
-                </span>
-                <b>→</b>
-            </div>
-        `;
-        card.addEventListener("click", () => {
-            openDetail(uid);
-        });
-        grid.appendChild(card);
-    });
-}
-function openDetail(uid) {
-    const user = getUsers()[uid];
-    if (!user) return;
-    selectedUID = uid;
-    passwordVisible = false;
-    $("detailAvatar").textContent =
-        getInitials(user.name || uid);
-    $("detailName").textContent =
-        user.name || "Unnamed User";
-    $("detailUID").textContent = uid;
-    $("detailNameValue").textContent =
-        user.name || "—";
-    $("detailUIDValue").textContent =
-        uid;
-    $("detailAccess").textContent =
-        getBlocked().includes(uid)
-            ? "Blocked"
-            : "Active";
-    $("detailStatus").innerHTML =
-        getBlocked().includes(uid)
-            ? "<span></span> BLOCKED"
-            : "<span></span> ACTIVE";
-    $("detailStatus").className =
-        `profile-status ${
-            getBlocked().includes(uid)
-                ? "blocked"
-                : "active"
-        }`;
-    renderDetailPassword();
-    const blockBtn = $("detailBlockBtn");
-    blockBtn.textContent =
-        getBlocked().includes(uid)
-            ? "✓ Unblock User"
-            : "⊘ Block User";
-    $("userDetailModal").classList.remove("hidden");
-}
-function renderDetailPassword() {
-    if (!selectedUID) return;
-    const user = getUsers()[selectedUID];
-    if (!user) return;
-    $("detailPassword").textContent =
-        passwordVisible
-            ? (user.password || "—")
-            : "••••••••";
-}
-function closeDetail() {
-    $("userDetailModal")?.classList.add("hidden");
-    selectedUID = null;
-}
-function openUserForm(uid = null) {
-    editingUID = uid;
-    $("modalBadge").textContent =
-        uid ? "EDIT USER" : "NEW USER";
-    $("modalTitle").textContent =
-        uid ? "Edit User" : "Add User";
-    if (uid) {
-        const user = getUsers()[uid];
-        $("uidInput").value = uid;
-        $("nameInput").value = user?.name || "";
-        $("userPasswordInput").value =
-            user?.password || "";
-    } else {
-        $("uidInput").value = "";
-        $("nameInput").value = "";
-        $("userPasswordInput").value = "";
-    }
-    $("userModal").classList.remove("hidden");
-}
-function closeUserForm() {
-    $("userModal")?.classList.add("hidden");
-    editingUID = null;
-}
-function saveUser() {
-    const uid =
-        $("uidInput").value.trim();
-    const name =
-        $("nameInput").value.trim();
-    const password =
-        $("userPasswordInput").value;
-    if (!uid) {
-        alert("UID is required.");
-        return;
-    }
-    if (!name) {
-        alert("User name is required.");
-        return;
-    }
-    if (!password) {
-        alert("Password is required.");
-        return;
-    }
-    const users = getUsers();
-    if (
-        !editingUID &&
-        users[uid]
-    ) {
-        alert("This UID already exists.");
-        return;
-    }
-    if (
-        editingUID &&
-        editingUID !== uid
-    ) {
-        delete users[editingUID];
-        const blocked =
-            getBlocked();
-        const index =
-            blocked.indexOf(editingUID);
-        if (index !== -1) {
-            blocked[index] = uid;
-        }
-    }
-    users[uid] = {
-        name,
-        password
-    };
-    markDirty();
-    closeUserForm();
-    renderCurrentFile();
-    openDetail(uid);
-    setMessage(
-        "User changes are ready to save.",
-        "success"
-    );
-}
-function toggleSelectedBlock() {
-    if (!selectedUID) return;
-    const blocked = getBlocked();
-    const index =
-        blocked.indexOf(selectedUID);
-    if (index === -1) {
-        blocked.push(selectedUID);
-    } else {
-        blocked.splice(index, 1);
-    }
-    markDirty();
-    openDetail(selectedUID);
-    renderUsers();
-    renderBlocked();
-    updateStats();
-}
-function deleteSelectedUser() {
-    if (!selectedUID) return;
-    const uid = selectedUID;
-    if (
-        !confirm(
-            `Delete ${uid} from this backend?`
-        )
-    ) {
-        return;
-    }
-    const users = getUsers();
-    delete users[uid];
-    const blocked = getBlocked();
-    const index = blocked.indexOf(uid);
-    if (index !== -1) {
-        blocked.splice(index, 1);
-    }
-    closeDetail();
-    markDirty();
-    renderCurrentFile();
-    setMessage(
-        "User deleted locally. Save to GitHub to apply.",
-        "success"
-    );
-}
-function renderBlocked() {
-    const list = $("blockedList");
-    if (!list) return;
-    const blocked = getBlocked();
-    $("blockedCount").textContent =
-        blocked.length;
-    list.innerHTML = "";
-    if (!blocked.length) {
-        list.innerHTML = `
-            <div class="blocked-empty">
-                ✓ No blocked users
-            </div>
-        `;
-        return;
-    }
-    blocked.forEach(uid => {
-        const user = getUsers()[uid];
-        const item =
-            document.createElement("div");
-        item.className = "blocked-item";
-        item.innerHTML = `
-            <div>
-                <strong>
-                    ${escapeHTML(user?.name || "Unknown User")}
-                </strong>
-                <span>
-                    ${escapeHTML(uid)}
-                </span>
-            </div>
-            <button type="button">
-                Unblock
-            </button>
-        `;
-        item.querySelector("button")
-            .addEventListener("click", () => {
-                const index =
-                    getBlocked().indexOf(uid);
-                if (index !== -1) {
-                    getBlocked().splice(index, 1);
-                }
-                markDirty();
-                renderCurrentFile();
-            });
-        list.appendChild(item);
-    });
-}
-function updateStats() {
-    const users =
-        Object.keys(getUsers());
-    const blocked =
-        getBlocked();
-    $("totalUsers").textContent =
-        users.length;
-    $("blockedUsers").textContent =
-        blocked.length;
-    $("activeUsers").textContent =
-        Math.max(
-            0,
-            users.length -
-            blocked.filter(uid => users.includes(uid)).length
-        );
-}
-async function saveCurrentFile() {
-    const saveBtn = $("saveBtn");
-    if (!files[currentFile]) {
-        setMessage(
-            "This backend file is not available.",
-            "error"
-        );
-        return;
-    }
-    saveBtn.disabled = true;
-    const oldHTML = saveBtn.innerHTML;
-    saveBtn.innerHTML = "Saving...";
-    try {
-        const response =
-            await fetch(API.save, {
-                method: "POST",
-                credentials: "include",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    file: currentFile,
-                    data: files[currentFile].data
-                })
-            });
-        const result =
-            await response.json();
+
         if (!response.ok || !result.success) {
             throw new Error(
                 result.error ||
-                "Unable to save backend"
+                "Unable to load GitHub data"
             );
         }
-        dirty = false;
-        updateSaveBar();
-        setMessage(
-            `${FILE_NAMES[currentFile]} updated successfully.`,
-            "success"
-        );
-        await loadData();
+
+        files = result.files || {};
+
+        $("backendStatus").textContent = "Online";
+        $("headerStatus").textContent = "Online";
+
+        render();
+
     } catch (error) {
-        setMessage(
-            error.message,
+
+        console.error(error);
+
+        $("backendStatus").textContent = "Error";
+        $("headerStatus").textContent = "Offline";
+
+        showMessage(
+            "❌ " + error.message,
             "error"
         );
-    } finally {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = oldHTML;
     }
 }
-function markDirty() {
-    dirty = true;
-    updateSaveBar();
+
+
+/* =========================================================
+   CURRENT DATA
+========================================================= */
+
+function getCurrentData() {
+
+    if (!files[currentFile]) {
+        return {};
+    }
+
+    return files[currentFile].data || {};
 }
-function updateSaveBar() {
-    const bar =
-        document.querySelector(".save-bar");
-    if (!bar) return;
-    bar.classList.toggle(
-        "has-changes",
-        dirty
-    );
-    const title =
-        bar.querySelector("strong");
-    const subtitle =
-        bar.querySelector("span");
-    if (dirty) {
-        title.textContent =
-            "Unsaved changes";
-        subtitle.textContent =
-            "Save your changes to update GitHub.";
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+function render() {
+
+    const data = getCurrentData();
+
+    $("currentFile").textContent =
+        fileNames[currentFile];
+
+    if (currentFile === "withdrawal") {
+
+        $("settingsCard").style.display = "block";
+
+        $("activeToggle").checked =
+            data.active === true;
+
+        $("passwordToggle").checked =
+            data.password_required === true;
+
     } else {
-        title.textContent =
-            "Everything is saved";
-        subtitle.textContent =
-            "Your current backend is up to date.";
+
+        $("settingsCard").style.display = "none";
     }
+
+    renderUsers();
+    renderBlocked();
+    renderStats();
 }
-function setMessage(text, type = "") {
-    const el = $("message");
-    if (!el) return;
-    el.textContent = text;
-    el.className =
-        `message ${type}`;
-    if (text) {
-        clearTimeout(setMessage.timer);
-        setMessage.timer =
-            setTimeout(() => {
-                el.textContent = "";
-            }, 5000);
+
+
+/* =========================================================
+   USER CARDS
+========================================================= */
+
+function renderUsers() {
+
+    const data = getCurrentData();
+    const users = data.users || {};
+
+    const grid = $("usersGrid");
+
+    grid.innerHTML = "";
+
+    const entries = Object.entries(users);
+
+    const search = searchText.toLowerCase();
+
+    const blocked = Array.isArray(data.blocked)
+        ? data.blocked
+        : [];
+
+    const filtered = entries.filter(([uid, user]) => {
+
+        return (
+            uid.toLowerCase().includes(search) ||
+            String(user?.name || "")
+                .toLowerCase()
+                .includes(search)
+        );
+    });
+
+    $("visibleUserCount").textContent =
+        filtered.length;
+
+    if (!filtered.length) {
+
+        $("emptyUsers").classList.remove("hidden");
+
+    } else {
+
+        $("emptyUsers").classList.add("hidden");
     }
+
+    filtered.forEach(([uid, user], index) => {
+
+        const isBlocked =
+            blocked.includes(uid);
+
+        const card =
+            document.createElement("div");
+
+        card.className =
+            "user-card" +
+            (isBlocked ? " is-blocked" : "");
+
+        card.style.animationDelay =
+            `${Math.min(index * 45, 400)}ms`;
+
+        const name =
+            String(user?.name || "Unnamed User");
+
+        const initial =
+            name.trim().charAt(0).toUpperCase() || "U";
+
+        card.innerHTML = `
+            <div class="user-card-top">
+
+                <div class="user-avatar">
+                    ${escapeHTML(initial)}
+                </div>
+
+                <div class="user-main-info">
+
+                    <h3>
+                        ${escapeHTML(name)}
+                    </h3>
+
+                    <p>
+                        ${escapeHTML(uid)}
+                    </p>
+
+                </div>
+
+                <div class="user-arrow">
+                    →
+                </div>
+
+            </div>
+
+            <div class="user-card-divider"></div>
+
+            <div class="user-card-bottom">
+
+                <div class="mini-info">
+                    <span>ACCESS</span>
+                    <strong class="${isBlocked ? "red-text" : "green-text"}">
+                        ${isBlocked ? "Blocked" : "Active"}
+                    </strong>
+                </div>
+
+                <div class="mini-info password-mini">
+                    <span>PASSWORD</span>
+                    <strong>••••••</strong>
+                </div>
+
+                <div class="status-dot ${isBlocked ? "blocked-dot" : ""}">
+                    ${isBlocked ? "⊘" : "✓"}
+                </div>
+
+            </div>
+        `;
+
+        card.onclick = () => openUserDetails(uid);
+
+        grid.appendChild(card);
+    });
 }
-function getInitials(name) {
-    const words =
-        String(name)
-            .trim()
-            .split(/\s+/)
-            .filter(Boolean);
-    if (!words.length) return "U";
-    if (words.length === 1) {
-        return words[0]
-            .slice(0, 2)
-            .toUpperCase();
+
+
+/* =========================================================
+   USER DETAIL
+========================================================= */
+
+function openUserDetails(uid) {
+
+    const data = getCurrentData();
+    const user = data.users?.[uid];
+
+    if (!user) return;
+
+    selectedUID = uid;
+
+    const blocked = Array.isArray(data.blocked)
+        ? data.blocked
+        : [];
+
+    const isBlocked = blocked.includes(uid);
+
+    const name =
+        String(user.name || "Unnamed User");
+
+    const initial =
+        name.trim().charAt(0).toUpperCase() || "U";
+
+    $("detailAvatar").textContent = initial;
+
+    $("detailName").textContent = name;
+    $("detailUID").textContent = uid;
+
+    $("detailNameValue").textContent = name;
+    $("detailUIDValue").textContent = uid;
+
+    $("detailPassword").textContent = "••••••••";
+
+    $("detailPassword").dataset.password =
+        user.password || "";
+
+    $("detailAccess").textContent =
+        isBlocked ? "Blocked" : "Active";
+
+    const status = $("detailStatus");
+
+    status.className =
+        "profile-status " +
+        (isBlocked ? "blocked" : "");
+
+    status.innerHTML = `
+        <span></span>
+        ${isBlocked ? "BLOCKED" : "ACTIVE"}
+    `;
+
+    const blockBtn = $("detailBlockBtn");
+
+    blockBtn.textContent =
+        isBlocked
+            ? "✓ Unblock User"
+            : "⊘ Block User";
+
+    blockBtn.className =
+        "detail-btn " +
+        (isBlocked ? "unblock" : "block");
+
+    $("userDetailModal")
+        .classList
+        .remove("hidden");
+}
+
+function closeUserDetails() {
+
+    $("userDetailModal")
+        .classList
+        .add("hidden");
+
+    selectedUID = null;
+}
+
+$("closeDetailBtn").onclick =
+    closeUserDetails;
+
+$("userDetailModal").onclick = event => {
+
+    if (event.target === $("userDetailModal")) {
+        closeUserDetails();
     }
-    return (
-        words[0][0] +
-        words[words.length - 1][0]
-    ).toUpperCase();
+};
+
+
+/* =========================================================
+   PASSWORD SHOW
+========================================================= */
+
+$("detailPasswordEye").onclick = function () {
+
+    const password =
+        $("detailPassword");
+
+    if (password.textContent === "••••••••") {
+
+        password.textContent =
+            password.dataset.password || "—";
+
+        this.textContent = "🙈";
+
+    } else {
+
+        password.textContent =
+            "••••••••";
+
+        this.textContent = "👁";
+    }
+};
+
+
+/* =========================================================
+   DETAIL EDIT
+========================================================= */
+
+$("detailEditBtn").onclick = () => {
+
+    if (!selectedUID) return;
+
+    const uid = selectedUID;
+
+    closeUserDetails();
+
+    openEditUser(uid);
+};
+
+
+/* =========================================================
+   DETAIL BLOCK
+========================================================= */
+
+$("detailBlockBtn").onclick = () => {
+
+    if (!selectedUID) return;
+
+    const uid = selectedUID;
+
+    const data = getCurrentData();
+
+    const blocked = Array.isArray(data.blocked)
+        ? data.blocked
+        : [];
+
+    const isBlocked = blocked.includes(uid);
+
+    closeUserDetails();
+
+    if (isBlocked) {
+        unblockUser(uid);
+    } else {
+        blockUser(uid);
+    }
+};
+
+
+/* =========================================================
+   DETAIL DELETE
+========================================================= */
+
+$("detailDeleteBtn").onclick = () => {
+
+    if (!selectedUID) return;
+
+    const uid = selectedUID;
+
+    closeUserDetails();
+
+    deleteUser(uid);
+};
+
+
+/* =========================================================
+   STATS
+========================================================= */
+
+function renderStats() {
+
+    const data = getCurrentData();
+
+    const users = data.users || {};
+
+    const blocked = Array.isArray(data.blocked)
+        ? data.blocked
+        : [];
+
+    const total =
+        Object.keys(users).length;
+
+    let active = 0;
+
+    Object.keys(users).forEach(uid => {
+
+        if (!blocked.includes(uid)) {
+            active++;
+        }
+    });
+
+    $("totalUsers").textContent = total;
+    $("activeUsers").textContent = active;
+    $("blockedUsers").textContent = blocked.length;
 }
+
+
+/* =========================================================
+   BLOCKED USERS
+========================================================= */
+
+function renderBlocked() {
+
+    const data = getCurrentData();
+
+    const blocked = Array.isArray(data.blocked)
+        ? data.blocked
+        : [];
+
+    const box = $("blockedList");
+
+    box.innerHTML = "";
+
+    $("blockedCount").textContent =
+        blocked.length;
+
+    if (!blocked.length) {
+
+        box.innerHTML = `
+            <div class="no-blocked">
+                <div>✓</div>
+                <strong>All users are active</strong>
+                <span>No blocked UIDs at the moment.</span>
+            </div>
+        `;
+
+        return;
+    }
+
+    blocked.forEach(uid => {
+
+        const item =
+            document.createElement("div");
+
+        item.className = "blocked-item";
+
+        item.innerHTML = `
+            <div class="blocked-avatar">⊘</div>
+
+            <div class="blocked-info">
+                <strong>${escapeHTML(uid)}</strong>
+                <span>Access restricted</span>
+            </div>
+
+            <button>
+                Unblock
+            </button>
+        `;
+
+        item.querySelector("button").onclick =
+            () => unblockUser(uid);
+
+        box.appendChild(item);
+    });
+}
+
+
+/* =========================================================
+   ADD USER
+========================================================= */
+
+$("addUserBtn").onclick =
+    openAddUser;
+
+$("emptyAddBtn").onclick =
+    openAddUser;
+
+function openAddUser() {
+
+    editingUID = null;
+
+    $("modalTitle").textContent =
+        "Add User";
+
+    $("modalBadge").textContent =
+        "NEW USER";
+
+    $("uidInput").value = "";
+    $("nameInput").value = "";
+    $("userPasswordInput").value = "";
+
+    $("uidInput").disabled = false;
+
+    $("userModal")
+        .classList
+        .remove("hidden");
+
+    setTimeout(() => {
+        $("uidInput").focus();
+    }, 100);
+}
+
+
+/* =========================================================
+   EDIT USER
+========================================================= */
+
+function openEditUser(uid) {
+
+    const data = getCurrentData();
+    const user = data.users?.[uid];
+
+    if (!user) return;
+
+    editingUID = uid;
+
+    $("modalTitle").textContent =
+        "Edit User";
+
+    $("modalBadge").textContent =
+        "EDIT USER";
+
+    $("uidInput").value = uid;
+
+    $("nameInput").value =
+        user.name || "";
+
+    $("userPasswordInput").value =
+        user.password || "";
+
+    /*
+     * UID is editable.
+     *
+     * We keep the original UID visible but
+     * allow changing it.
+     */
+    $("uidInput").disabled = false;
+
+    $("userModal")
+        .classList
+        .remove("hidden");
+
+    setTimeout(() => {
+        $("nameInput").focus();
+    }, 100);
+}
+
+
+/* =========================================================
+   SAVE USER FORM
+========================================================= */
+
+$("confirmUserBtn").onclick = function () {
+
+    const newUID =
+        $("uidInput").value.trim();
+
+    const name =
+        $("nameInput").value.trim();
+
+    const password =
+        $("userPasswordInput").value;
+
+    if (!newUID) {
+        showMessage(
+            "UID is required.",
+            "error"
+        );
+        return;
+    }
+
+    if (!name) {
+        showMessage(
+            "User name is required.",
+            "error"
+        );
+        return;
+    }
+
+    const data = getCurrentData();
+
+    if (!data.users) {
+        data.users = {};
+    }
+
+    /*
+     * Prevent duplicate UID
+     * when creating or renaming.
+     */
+    if (
+        newUID !== editingUID &&
+        data.users[newUID]
+    ) {
+
+        showMessage(
+            "This UID already exists.",
+            "error"
+        );
+
+        return;
+    }
+
+    /*
+     * If UID was changed,
+     * move old record to new UID.
+     */
+    if (
+        editingUID &&
+        newUID !== editingUID
+    ) {
+
+        const oldUser =
+            data.users[editingUID];
+
+        delete data.users[editingUID];
+
+        data.users[newUID] = {
+            name: name,
+            password: password
+        };
+
+        if (Array.isArray(data.blocked)) {
+
+            data.blocked =
+                data.blocked.map(uid =>
+                    uid === editingUID
+                        ? newUID
+                        : uid
+                );
+        }
+
+    } else {
+
+        data.users[newUID] = {
+            name: name,
+            password: password
+        };
+    }
+
+    closeUserModal();
+
+    render();
+
+    showMessage(
+        editingUID
+            ? "✓ User updated. Save to GitHub."
+            : "✓ User added. Save to GitHub.",
+        "success"
+    );
+
+    editingUID = null;
+};
+
+
+/* =========================================================
+   DELETE
+========================================================= */
+
+function deleteUser(uid) {
+
+    const data = getCurrentData();
+
+    const user = data.users?.[uid];
+
+    if (!user) return;
+
+    openConfirm(
+        "Delete User?",
+        `Delete "${user.name || uid}" permanently?`,
+        "🗑",
+        "delete",
+        () => {
+
+            if (data.users) {
+                delete data.users[uid];
+            }
+
+            if (Array.isArray(data.blocked)) {
+
+                data.blocked =
+                    data.blocked.filter(
+                        x => x !== uid
+                    );
+            }
+
+            render();
+
+            showMessage(
+                "✓ User deleted. Save to GitHub.",
+                "success"
+            );
+        }
+    );
+}
+
+
+/* =========================================================
+   BLOCK
+========================================================= */
+
+function blockUser(uid) {
+
+    const data = getCurrentData();
+
+    if (!Array.isArray(data.blocked)) {
+        data.blocked = [];
+    }
+
+    if (data.blocked.includes(uid)) return;
+
+    data.blocked.push(uid);
+
+    render();
+
+    showMessage(
+        "✓ " + uid +
+        " blocked. Save to GitHub.",
+        "success"
+    );
+}
+
+
+/* =========================================================
+   UNBLOCK
+========================================================= */
+
+function unblockUser(uid) {
+
+    const data = getCurrentData();
+
+    if (Array.isArray(data.blocked)) {
+
+        data.blocked =
+            data.blocked.filter(
+                x => x !== uid
+            );
+    }
+
+    render();
+
+    showMessage(
+        "✓ " + uid +
+        " unblocked. Save to GitHub.",
+        "success"
+    );
+}
+
+
+/* =========================================================
+   SETTINGS
+========================================================= */
+
+$("activeToggle").onchange = event => {
+
+    const data = getCurrentData();
+
+    data.active =
+        event.target.checked;
+
+    showMessage(
+        "Extension setting changed. Save to GitHub.",
+        "success"
+    );
+};
+
+$("passwordToggle").onchange = event => {
+
+    const data = getCurrentData();
+
+    data.password_required =
+        event.target.checked;
+
+    showMessage(
+        "Password setting changed. Save to GitHub.",
+        "success"
+    );
+};
+
+
+/* =========================================================
+   SEARCH
+========================================================= */
+
+$("searchInput").oninput = event => {
+
+    searchText =
+        event.target.value.trim();
+
+    renderUsers();
+};
+
+$("clearSearch").onclick = () => {
+
+    $("searchInput").value = "";
+    searchText = "";
+
+    renderUsers();
+    $("searchInput").focus();
+};
+
+
+/* =========================================================
+   KEYBOARD SEARCH
+========================================================= */
+
+document.addEventListener("keydown", event => {
+
+    if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "k"
+    ) {
+
+        event.preventDefault();
+
+        $("searchInput").focus();
+    }
+
+    if (event.key === "Escape") {
+
+        $("userDetailModal")
+            .classList
+            .add("hidden");
+
+        $("userModal")
+            .classList
+            .add("hidden");
+
+        $("confirmModal")
+            .classList
+            .add("hidden");
+    }
+});
+
+
+/* =========================================================
+   TABS
+========================================================= */
+
+document
+    .querySelectorAll(".tab")
+    .forEach(tab => {
+
+        tab.onclick = function () {
+
+            document
+                .querySelectorAll(".tab")
+                .forEach(item =>
+                    item.classList.remove("active")
+                );
+
+            tab.classList.add("active");
+
+            currentFile =
+                tab.dataset.file;
+
+            searchText = "";
+
+            $("searchInput").value = "";
+
+            render();
+        };
+    });
+
+
+/* =========================================================
+   REFRESH
+========================================================= */
+
+$("refreshBtn").onclick = async function () {
+
+    const button = this;
+
+    button.disabled = true;
+    button.textContent = "…";
+
+    await loadData();
+
+    setTimeout(() => {
+        button.disabled = false;
+        button.textContent = "↻";
+    }, 500);
+};
+
+
+/* =========================================================
+   USER MODAL
+========================================================= */
+
+function closeUserModal() {
+
+    $("userModal")
+        .classList
+        .add("hidden");
+
+    editingUID = null;
+}
+
+$("cancelBtn").onclick =
+    closeUserModal;
+
+$("closeModalBtn").onclick =
+    closeUserModal;
+
+$("userModal").onclick = event => {
+
+    if (event.target === $("userModal")) {
+        closeUserModal();
+    }
+};
+
+$("showPasswordBtn").onclick = function () {
+
+    const input =
+        $("userPasswordInput");
+
+    if (input.type === "password") {
+
+        input.type = "text";
+        this.textContent = "🙈";
+
+    } else {
+
+        input.type = "password";
+        this.textContent = "👁";
+    }
+};
+
+
+/* =========================================================
+   CONFIRM MODAL
+========================================================= */
+
+function openConfirm(
+    title,
+    text,
+    icon,
+    type,
+    callback
+) {
+
+    $("confirmTitle").textContent = title;
+    $("confirmText").textContent = text;
+    $("confirmIcon").textContent = icon;
+
+    $("confirmOk").className =
+        "btn " +
+        (type === "delete" ? "danger" : "primary");
+
+    pendingAction = callback;
+
+    $("confirmModal")
+        .classList
+        .remove("hidden");
+}
+
+function closeConfirm() {
+
+    $("confirmModal")
+        .classList
+        .add("hidden");
+
+    pendingAction = null;
+}
+
+$("confirmCancel").onclick =
+    closeConfirm;
+
+$("confirmOk").onclick = () => {
+
+    if (typeof pendingAction === "function") {
+        pendingAction();
+    }
+
+    closeConfirm();
+};
+
+$("confirmModal").onclick = event => {
+
+    if (event.target === $("confirmModal")) {
+        closeConfirm();
+    }
+};
+
+
+/* =========================================================
+   SAVE TO GITHUB
+========================================================= */
+
+$("saveBtn").onclick = async function () {
+
+    const file = files[currentFile];
+
+    if (!file) {
+
+        showMessage(
+            "No backend file loaded.",
+            "error"
+        );
+
+        return;
+    }
+
+    const btn = $("saveBtn");
+
+    btn.disabled = true;
+
+    btn.innerHTML =
+        "<span class='spinner'></span> Saving...";
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/save-data",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        file:
+                            currentFile,
+
+                        data:
+                            file.data,
+
+                        sha:
+                            file.sha
+                    })
+                }
+            );
+
+        const result =
+            await response.json();
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+
+            throw new Error(
+                result.error ||
+                "GitHub save failed"
+            );
+        }
+
+        showMessage(
+            "✓ GitHub updated successfully!",
+            "success"
+        );
+
+        await loadData();
+
+    } catch (error) {
+
+        console.error(error);
+
+        showMessage(
+            "❌ " + error.message,
+            "error"
+        );
+
+    } finally {
+
+        btn.disabled = false;
+
+        btn.innerHTML =
+            "<span>☁</span> Save to GitHub";
+    }
+};
+
+
+/* =========================================================
+   ESCAPE HTML
+========================================================= */
+
 function escapeHTML(value) {
+
     return String(value)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
