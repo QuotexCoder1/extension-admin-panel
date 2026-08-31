@@ -1,11 +1,29 @@
 import crypto from "crypto";
 
 export default async function handler(req, res) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-    if (req.method === "OPTIONS") return res.status(204).end();
+    // ==========================================
+    // CORS
+    // ==========================================
+
+    res.setHeader(
+        "Access-Control-Allow-Origin",
+        "*"
+    );
+
+    res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, OPTIONS"
+    );
+
+    res.setHeader(
+        "Access-Control-Allow-Headers",
+        "Content-Type"
+    );
+
+    if (req.method === "OPTIONS") {
+        return res.status(204).end();
+    }
 
     if (req.method !== "GET") {
         return res.status(405).json({
@@ -14,12 +32,16 @@ export default async function handler(req, res) {
         });
     }
 
-    // ==============================
-    // ADMIN SESSION
-    // ==============================
+    // ==========================================
+    // VERIFY ADMIN SESSION
+    // ==========================================
 
     const cookies = req.headers.cookie || "";
-    const match = cookies.match(/(?:^|;\s*)admin_session=([^;]+)/);
+
+    const match =
+        cookies.match(
+            /(?:^|;\s*)admin_session=([^;]+)/
+        );
 
     if (!match) {
         return res.status(401).json({
@@ -28,76 +50,135 @@ export default async function handler(req, res) {
         });
     }
 
+    const sessionToken =
+        match[1];
+
     try {
-        const decoded = Buffer
-            .from(match[1], "base64url")
-            .toString("utf8");
 
-        const parts = decoded.split(":");
+        const decoded =
+            Buffer
+                .from(
+                    sessionToken,
+                    "base64url"
+                )
+                .toString("utf8");
 
-        if (parts.length !== 3) throw new Error();
+        const parts =
+            decoded.split(":");
 
-        const [type, expiresAt, signature] = parts;
-
-        if (type !== "admin") throw new Error();
-
-        if (!Number.isFinite(Number(expiresAt))) {
-            throw new Error();
+        if (parts.length !== 3) {
+            throw new Error(
+                "Invalid session"
+            );
         }
 
-        if (Date.now() > Number(expiresAt)) {
-            throw new Error();
+        const type =
+            parts[0];
+
+        const expiresAt =
+            parts[1];
+
+        const signature =
+            parts[2];
+
+        if (type !== "admin") {
+            throw new Error(
+                "Invalid session type"
+            );
         }
 
-        const secret = process.env.ADMIN_SESSION_SECRET;
+        if (
+            !Number.isFinite(
+                Number(expiresAt)
+            )
+        ) {
+            throw new Error(
+                "Invalid session expiry"
+            );
+        }
 
-        if (!secret) {
+        if (
+            Date.now() >
+            Number(expiresAt)
+        ) {
+            throw new Error(
+                "Session expired"
+            );
+        }
+
+        const sessionSecret =
+            process.env.ADMIN_SESSION_SECRET;
+
+        if (!sessionSecret) {
             return res.status(500).json({
                 success: false,
-                error: "ADMIN_SESSION_SECRET is not configured"
+                error:
+                    "ADMIN_SESSION_SECRET is not configured"
             });
         }
 
-        const expected = crypto
-            .createHmac("sha256", secret)
-            .update(`admin:${expiresAt}`)
-            .digest("hex");
+        const payload =
+            `admin:${expiresAt}`;
+
+        const expectedSignature =
+            crypto
+                .createHmac(
+                    "sha256",
+                    sessionSecret
+                )
+                .update(payload)
+                .digest("hex");
 
         if (
-            signature.length !== expected.length ||
-            !crypto.timingSafeEqual(
-                Buffer.from(signature),
-                Buffer.from(expected)
-            )
+            signature.length !==
+            expectedSignature.length
         ) {
-            throw new Error();
+            throw new Error(
+                "Invalid session signature"
+            );
         }
 
-    } catch {
+        if (
+            !crypto.timingSafeEqual(
+                Buffer.from(signature),
+                Buffer.from(expectedSignature)
+            )
+        ) {
+            throw new Error(
+                "Invalid session signature"
+            );
+        }
+
+    } catch (error) {
+
         return res.status(401).json({
             success: false,
-            error: "Invalid or expired admin session"
+            error:
+                "Invalid or expired admin session"
         });
     }
 
-    // ==============================
-    // GITHUB
-    // ==============================
+    // ==========================================
+    // GITHUB TOKEN
+    // ==========================================
 
-    const token = process.env.GITHUB_TOKEN;
+    const token =
+        process.env.GITHUB_TOKEN;
 
     if (!token) {
         return res.status(500).json({
             success: false,
-            error: "GITHUB_TOKEN is not configured"
+            error:
+                "GITHUB_TOKEN is not configured in Vercel"
         });
     }
 
-    // ==============================
-    // ALL BACKENDS
-    // ==============================
+    // ==========================================
+    // BACKEND REPOSITORIES
+    // ==========================================
 
     const repositories = {
+
         withdrawal: {
             owner: "QuotexCoder1",
             repo: "Withdrawal",
@@ -114,52 +195,80 @@ export default async function handler(req, res) {
             owner: "QuotexCoder1",
             repo: "wns",
             path: "wns.json"
-        },
-
-        qxControl: {
-            owner: "nasir12736",
-            repo: "qx-control",
-            path: "control1.json"
         }
     };
 
+    // ==========================================
+    // READ GITHUB FILE
+    // ==========================================
+
     async function getGitHubFile(config) {
+
         const url =
             `https://api.github.com/repos/` +
-            `${config.owner}/${config.repo}/contents/${config.path}`;
+            `${config.owner}/${config.repo}/contents/` +
+            `${config.path}`;
 
-        const response = await fetch(url, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-                "User-Agent": "Extension-Admin-Panel"
-            }
-        });
+        const response =
+            await fetch(url, {
 
-        const data = await response.json();
+                method: "GET",
+
+                headers: {
+
+                    "Authorization":
+                        `Bearer ${token}`,
+
+                    "Accept":
+                        "application/vnd.github+json",
+
+                    "X-GitHub-Api-Version":
+                        "2022-11-28",
+
+                    "User-Agent":
+                        "Extension-Admin-Panel"
+                }
+            });
+
+        const data =
+            await response.json();
 
         if (!response.ok) {
+
             throw new Error(
-                `${config.repo}: GitHub HTTP ${response.status} - ` +
-                `${data.message || "Unable to read file"}`
+                `${config.repo}: GitHub HTTP ` +
+                `${response.status} - ` +
+                `${data.message || "GitHub request failed"}`
             );
         }
 
         if (!data.content) {
-            throw new Error(`${config.repo}: File content missing`);
+
+            throw new Error(
+                `${config.repo}: File content missing`
+            );
         }
 
-        const decoded = Buffer
-            .from(data.content.replace(/\n/g, ""), "base64")
-            .toString("utf8");
+        const decoded =
+            Buffer
+                .from(
+                    data.content.replace(/\n/g, ""),
+                    "base64"
+                )
+                .toString("utf8");
 
         let json;
 
         try {
-            json = JSON.parse(decoded);
-        } catch {
-            throw new Error(`${config.repo}: Invalid JSON`);
+
+            json =
+                JSON.parse(decoded);
+
+        } catch (error) {
+
+            throw new Error(
+                `${config.repo}: Invalid JSON`
+            );
         }
 
         return {
@@ -170,27 +279,64 @@ export default async function handler(req, res) {
         };
     }
 
+    // ==========================================
+    // LOAD ALL BACKENDS
+    // ==========================================
+
     try {
-        const results = await Promise.all(
-            Object.entries(repositories).map(
-                async ([name, config]) => [
-                    name,
-                    await getGitHubFile(config)
-                ]
-            )
-        );
+
+        const results =
+            await Promise.all(
+
+                Object.entries(
+                    repositories
+                ).map(
+                    async ([name, config]) => {
+
+                        const result =
+                            await getGitHubFile(
+                                config
+                            );
+
+                        return [
+                            name,
+                            result
+                        ];
+                    }
+                )
+            );
+
+        const files =
+            Object.fromEntries(
+                results
+            );
+
+        // ======================================
+        // SUCCESS
+        // ======================================
 
         return res.status(200).json({
+
             success: true,
-            files: Object.fromEntries(results)
+
+            files
+
         });
 
     } catch (error) {
-        console.error("GET DATA ERROR:", error);
+
+        console.error(
+            "GET DATA ERROR:",
+            error
+        );
 
         return res.status(500).json({
+
             success: false,
-            error: error.message
+
+            error:
+                error.message
+
         });
     }
 }
