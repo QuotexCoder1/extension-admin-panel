@@ -3,7 +3,7 @@ export default async (req) => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "GET, OPTIONS"
+        "Access-Control-Allow-Methods": "POST, OPTIONS"
     };
 
     if (req.method === "OPTIONS") {
@@ -13,7 +13,7 @@ export default async (req) => {
         });
     }
 
-    if (req.method !== "GET") {
+    if (req.method !== "POST") {
         return new Response(
             JSON.stringify({
                 success: false,
@@ -27,6 +27,7 @@ export default async (req) => {
     }
 
     try {
+
         const token = process.env.GITHUB_TOKEN;
 
         if (!token) {
@@ -34,6 +35,12 @@ export default async (req) => {
                 "GITHUB_TOKEN is not configured in Netlify"
             );
         }
+
+        const body = await req.json();
+
+        const file = body.file;
+        const newData = body.data;
+        const sha = body.sha;
 
         const repositories = {
             withdrawal: {
@@ -52,22 +59,40 @@ export default async (req) => {
                 owner: "QuotexCoder1",
                 repo: "wns",
                 path: "wns.json"
-            },
-
-            qxcontrol: {
-                owner: "nasir12736",
-                repo: "qx-control",
-                path: "control1.json"
             }
         };
 
-        async function getGitHubFile(config) {
-            const url =
-                `https://api.github.com/repos/` +
-                `${config.owner}/${config.repo}/contents/` +
-                `${config.path}`;
+        if (!repositories[file]) {
+            throw new Error(
+                "Invalid backend file"
+            );
+        }
 
-            const response = await fetch(url, {
+        if (
+            !newData ||
+            typeof newData !== "object"
+        ) {
+            throw new Error(
+                "Invalid JSON data"
+            );
+        }
+
+        const config =
+            repositories[file];
+
+        const url =
+            `https://api.github.com/repos/` +
+            `${config.owner}/${config.repo}/contents/` +
+            `${config.path}`;
+
+        /*
+         * Get latest SHA from GitHub.
+         * This prevents an old SHA from causing
+         * unnecessary update failures.
+         */
+
+        const latestResponse =
+            await fetch(url, {
                 method: "GET",
                 headers: {
                     "Authorization": `Bearer ${token}`,
@@ -77,61 +102,90 @@ export default async (req) => {
                 }
             });
 
-            const data = await response.json();
+        const latest =
+            await latestResponse.json();
 
-            if (!response.ok) {
-                throw new Error(
-                    `${config.repo}: GitHub HTTP ${response.status} - ` +
-                    `${data.message || "Unable to read file"}`
-                );
-            }
-
-            if (!data.content) {
-                throw new Error(
-                    `${config.repo}: JSON file content missing`
-                );
-            }
-
-            const decoded = Buffer.from(
-                data.content.replace(/\n/g, ""),
-                "base64"
-            ).toString("utf8");
-
-            let json;
-
-            try {
-                json = JSON.parse(decoded);
-            } catch {
-                throw new Error(
-                    `${config.repo}: Invalid JSON`
-                );
-            }
-
-            return {
-                data: json,
-                sha: data.sha,
-                repository: config.repo,
-                path: config.path
-            };
+        if (!latestResponse.ok) {
+            throw new Error(
+                `GitHub read failed: ${latestResponse.status} - ` +
+                `${latest.message || "Unknown error"}`
+            );
         }
 
-        const results = await Promise.all(
-            Object.entries(repositories).map(
-                async ([name, config]) => {
-                    const result =
-                        await getGitHubFile(config);
+        const latestSha =
+            latest.sha || sha;
 
-                    return [name, result];
-                }
-            )
-        );
+        if (!latestSha) {
+            throw new Error(
+                "GitHub file SHA is missing"
+            );
+        }
 
-        const files = Object.fromEntries(results);
+        /*
+         * Convert JSON into Base64
+         */
+
+        const content =
+            JSON.stringify(
+                newData,
+                null,
+                2
+            );
+
+        const encoded =
+            Buffer
+                .from(content, "utf8")
+                .toString("base64");
+
+        /*
+         * Update GitHub file
+         */
+
+        const updateResponse =
+            await fetch(url, {
+                method: "PUT",
+
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/vnd.github+json",
+                    "Content-Type": "application/json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                    "User-Agent": "Extension-Control-Panel"
+                },
+
+                body: JSON.stringify({
+                    message:
+                        `Update ${config.path} from Admin Panel`,
+
+                    content: encoded,
+
+                    sha: latestSha
+                })
+            });
+
+        const result =
+            await updateResponse.json();
+
+        if (!updateResponse.ok) {
+
+            throw new Error(
+                `GitHub update failed: ` +
+                `${updateResponse.status} - ` +
+                `${result.message || "Unknown error"}`
+            );
+        }
 
         return new Response(
             JSON.stringify({
                 success: true,
-                files
+                message:
+                    `${config.path} updated successfully`,
+                repository:
+                    config.repo,
+                path:
+                    config.path,
+                commit:
+                    result.commit?.sha || null
             }),
             {
                 status: 200,
@@ -140,8 +194,9 @@ export default async (req) => {
         );
 
     } catch (error) {
+
         console.error(
-            "get-data error:",
+            "save-data error:",
             error
         );
 
