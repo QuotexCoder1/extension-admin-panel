@@ -1,14 +1,11 @@
 import crypto from "crypto";
 
 export default async function handler(req, res) {
-
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-    if (req.method === "OPTIONS") {
-        return res.status(204).end();
-    }
+    if (req.method === "OPTIONS") return res.status(204).end();
 
     if (req.method !== "GET") {
         return res.status(405).json({
@@ -17,15 +14,12 @@ export default async function handler(req, res) {
         });
     }
 
-    // ==========================================
+    // ==============================
     // ADMIN SESSION
-    // ==========================================
+    // ==============================
 
     const cookies = req.headers.cookie || "";
-
-    const match = cookies.match(
-        /(?:^|;\s*)admin_session=([^;]+)/
-    );
+    const match = cookies.match(/(?:^|;\s*)admin_session=([^;]+)/);
 
     if (!match) {
         return res.status(401).json({
@@ -35,33 +29,24 @@ export default async function handler(req, res) {
     }
 
     try {
-
-        const sessionToken = match[1];
-
         const decoded = Buffer
-            .from(sessionToken, "base64url")
+            .from(match[1], "base64url")
             .toString("utf8");
 
         const parts = decoded.split(":");
 
-        if (parts.length !== 3) {
-            throw new Error("Invalid session");
-        }
+        if (parts.length !== 3) throw new Error();
 
-        const type = parts[0];
-        const expiresAt = parts[1];
-        const signature = parts[2];
+        const [type, expiresAt, signature] = parts;
 
-        if (type !== "admin") {
-            throw new Error("Invalid session type");
-        }
+        if (type !== "admin") throw new Error();
 
         if (!Number.isFinite(Number(expiresAt))) {
-            throw new Error("Invalid expiry");
+            throw new Error();
         }
 
         if (Date.now() > Number(expiresAt)) {
-            throw new Error("Session expired");
+            throw new Error();
         }
 
         const secret = process.env.ADMIN_SESSION_SECRET;
@@ -73,40 +58,31 @@ export default async function handler(req, res) {
             });
         }
 
-        const payload = `admin:${expiresAt}`;
-
-        const expectedSignature = crypto
+        const expected = crypto
             .createHmac("sha256", secret)
-            .update(payload)
+            .update(`admin:${expiresAt}`)
             .digest("hex");
 
         if (
-            signature.length !==
-            expectedSignature.length
-        ) {
-            throw new Error("Invalid signature");
-        }
-
-        if (
+            signature.length !== expected.length ||
             !crypto.timingSafeEqual(
                 Buffer.from(signature),
-                Buffer.from(expectedSignature)
+                Buffer.from(expected)
             )
         ) {
-            throw new Error("Invalid signature");
+            throw new Error();
         }
 
-    } catch (error) {
-
+    } catch {
         return res.status(401).json({
             success: false,
             error: "Invalid or expired admin session"
         });
     }
 
-    // ==========================================
-    // GITHUB TOKEN
-    // ==========================================
+    // ==============================
+    // GITHUB
+    // ==============================
 
     const token = process.env.GITHUB_TOKEN;
 
@@ -117,12 +93,11 @@ export default async function handler(req, res) {
         });
     }
 
-    // ==========================================
-    // REPOSITORIES
-    // ==========================================
+    // ==============================
+    // ALL BACKENDS
+    // ==============================
 
     const repositories = {
-
         withdrawal: {
             owner: "QuotexCoder1",
             repo: "Withdrawal",
@@ -141,56 +116,42 @@ export default async function handler(req, res) {
             path: "wns.json"
         },
 
-        qxcontrol: {
+        qxControl: {
             owner: "nasir12736",
             repo: "qx-control",
             path: "control1.json"
         }
     };
 
-    // ==========================================
-    // READ FILE
-    // ==========================================
-
     async function getGitHubFile(config) {
-
         const url =
             `https://api.github.com/repos/` +
-            `${config.owner}/${config.repo}/contents/` +
-            `${config.path}`;
+            `${config.owner}/${config.repo}/contents/${config.path}`;
 
         const response = await fetch(url, {
-            method: "GET",
-
             headers: {
-                "Authorization": `Bearer ${token}`,
-                "Accept": "application/vnd.github+json",
+                Authorization: `Bearer ${token}`,
+                Accept: "application/vnd.github+json",
                 "X-GitHub-Api-Version": "2022-11-28",
                 "User-Agent": "Extension-Admin-Panel"
             }
         });
 
-        const result = await response.json();
+        const data = await response.json();
 
         if (!response.ok) {
-
             throw new Error(
                 `${config.repo}: GitHub HTTP ${response.status} - ` +
-                `${result.message || "GitHub request failed"}`
+                `${data.message || "Unable to read file"}`
             );
         }
 
-        if (!result.content) {
-            throw new Error(
-                `${config.repo}: File content missing`
-            );
+        if (!data.content) {
+            throw new Error(`${config.repo}: File content missing`);
         }
 
         const decoded = Buffer
-            .from(
-                result.content.replace(/\n/g, ""),
-                "base64"
-            )
+            .from(data.content.replace(/\n/g, ""), "base64")
             .toString("utf8");
 
         let json;
@@ -198,38 +159,24 @@ export default async function handler(req, res) {
         try {
             json = JSON.parse(decoded);
         } catch {
-            throw new Error(
-                `${config.repo}: Invalid JSON`
-            );
+            throw new Error(`${config.repo}: Invalid JSON`);
         }
 
         return {
             data: json,
-            sha: result.sha,
+            sha: data.sha,
             repository: config.repo,
             path: config.path
         };
     }
 
-    // ==========================================
-    // LOAD ALL
-    // ==========================================
-
     try {
-
         const results = await Promise.all(
-
             Object.entries(repositories).map(
-                async ([name, config]) => {
-
-                    const result =
-                        await getGitHubFile(config);
-
-                    return [
-                        name,
-                        result
-                    ];
-                }
+                async ([name, config]) => [
+                    name,
+                    await getGitHubFile(config)
+                ]
             )
         );
 
@@ -239,7 +186,6 @@ export default async function handler(req, res) {
         });
 
     } catch (error) {
-
         console.error("GET DATA ERROR:", error);
 
         return res.status(500).json({
