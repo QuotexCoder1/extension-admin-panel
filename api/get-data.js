@@ -141,7 +141,7 @@ export default async function handler(req, res) {
             path: "wns.json"
         },
 
-        control: {
+        qxcontrol: {
             owner: "nasir12736",
             repo: "qx-control",
             path: "control1.json"
